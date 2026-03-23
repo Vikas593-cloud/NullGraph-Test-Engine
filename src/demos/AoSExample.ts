@@ -35,7 +35,7 @@ export async function setupAoS(engine: NullGraph, camera: Camera, getUiState: ()
     `;
 
     // 1. Setup Pipeline
-    engine.createPipeline({
+    const trianglesBatch=engine.createBatch({
         shaderCode: shaderSource,
         strideFloats: 14,
         maxInstances: 10000
@@ -47,7 +47,7 @@ export async function setupAoS(engine: NullGraph, camera: Camera, getUiState: ()
     for (let i = 0; i < 10000; i++) {
         originalYPositions[i] = data[i * 14 + 2];
     }
-    engine.updateData(data, 10000);
+    engine.updateBatchData(trianglesBatch,data, 10000);
 
     // 3. Return the specific update loop for this demo
     return {
@@ -58,10 +58,10 @@ export async function setupAoS(engine: NullGraph, camera: Camera, getUiState: ()
                 const waveOffset = Math.sin(simTime * 3.0 + (xPos * 0.1)) * getUiState().amplitude;
                 data[base + 2] = originalYPositions[i] + waveOffset;
             }
-            engine.updateData(data, 10000);
+            engine.updateBatchData(trianglesBatch,data, 10000);
         },
         destroy: () => {
-            // Any cleanup if needed when switching away from AoS
+            engine.clearBatches();
             console.log("Destroying AoS Demo");
         }
     };

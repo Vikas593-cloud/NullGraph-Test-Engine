@@ -1,86 +1,135 @@
 /* src/style.css */
-:root {
-    --sidebar-width: 320px;
-    --transition-speed: 0.4s;
+
+/* --- CSS Reset & Variables --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
+
+:root {
+    --sidebar-width: 300px;
+    --right-panel-width: 280px; /* Added missing variable */
+    --transition-speed: 0.4s;
+    --accent-color: #00ffcc; /* Centralized theme color */
+    --bg-dark: rgba(12, 12, 16, 0.85);
+    --border-light: rgba(255, 255, 255, 0.08);
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden; /* Prevent body scrolling, let internal panels scroll */
+    background-color: #000; /* Fallback before canvas loads */
+}
+
+/* --- Custom Scrollbar for a Professional Look --- */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* --- 3D Canvas --- */
 #gpuCanvas {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 1; /* Keep the 3D world in the background */
+    z-index: 1;
 }
+
+/* --- Left Sidebar --- */
 #sidebar {
     position: fixed;
     top: 0;
     left: 0;
     width: var(--sidebar-width);
     height: 100vh;
-    background: linear-gradient(to right, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.7));
+    background: linear-gradient(135deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.8));
     backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border-light);
     z-index: 100;
-    padding: 40px 30px;
+    padding: 40px 24px;
     color: #fff;
+    overflow-y: auto;
     transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-#dashboard {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 100; /* Also force UI above canvas */
-    background: rgba(10, 10, 12, 0.8);
-    backdrop-filter: blur(10px);
-    padding: 12px 24px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 15px;
+#sidebar.collapsed {
+    transform: translateX(calc(-100% + 40px));
 }
 
-/* Make titles pop */
+#sidebar-toggle {
+    position: absolute;
+    top: 24px;
+    right: -20px;
+    width: 40px;
+    height: 40px;
+    background: #1a1a20;
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 101;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+#sidebar.collapsed #sidebar-toggle {
+    transform: rotate(180deg);
+}
+
+#sidebar-toggle:hover {
+    background: var(--accent-color);
+    color: #000;
+    border-color: var(--accent-color);
+}
+
+/* --- Sidebar Navigation Styling --- */
 .nav-header {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     font-weight: 900;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
     letter-spacing: 2px;
 }
 
-.nav-header span { color: #00ffcc; }
+.nav-header span {
+    color: var(--accent-color);
+}
 
 .nav-section {
-    color: #666;
+    color: #777;
     text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 1.5px;
-    margin: 25px 0 10px 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    margin: 30px 0 10px 0;
+    padding-left: 12px;
 }
 
 .nav-item {
-    font-weight: 600;
-    margin-bottom: 5px;
-}
-
-.doc-text {
-    font-size: 0.85rem;
-    line-height: 1.5;
-    color: #999;
-}
-
-/* Keep your existing canvas, sidebar, and dashboard CSS... */
-
-/* --- UI Interactions & Hierarchy --- */
-.nav-item {
-    font-weight: 600;
-    margin-bottom: 5px;
-    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    padding: 10px 12px;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
-    color: #999;
+    color: #aaa;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
 }
 
 .nav-item:hover {
@@ -88,94 +137,28 @@
     color: #fff;
 }
 
-/* The active state for the currently selected page/demo */
 .nav-item.active {
-    background: rgba(0, 255, 204, 0.1);
-    color: #00ffcc;
-    border-left: 3px solid #00ffcc;
+    background: rgba(0, 255, 204, 0.08);
+    color: var(--accent-color);
+    border-left: 3px solid var(--accent-color);
 }
 
-/* Indent sub-items to create hierarchy */
 .sub-nav {
     padding-left: 24px;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
 }
 
 /* --- Documentation Overlay --- */
 #doc-overlay {
     position: fixed;
     top: 0;
-    left: 320px; /* Start AFTER the sidebar */
-    width: calc(100vw - 320px);
-    height: 100vh;
-    background: rgba(10, 10, 12, 0.85); /* Darken the canvas behind it */
-    backdrop-filter: blur(10px); /* Blur the WebGPU canvas slightly */
-    z-index: 50;
-    padding: 60px;
-    color: #fff;
-    overflow-y: auto;
-    transition: opacity 0.3s ease;
-}
-
-.doc-view h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 10px;
-}
-
-.doc-view p {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    color: #ccc;
-    max-width: 800px;
-}
-
-
-/* The collapsed state */
-#sidebar.collapsed {
-    transform: translateX(calc(-100% + 40px)); /* Leaves a tiny sliver visible for the button */
-}
-
-/* Sidebar Toggle Button */
-#sidebar-toggle {
-    position: absolute;
-    top: 20px;
-    right: -20px; /* Hangs off the edge */
-    width: 40px;
-    height: 40px;
-    background: #1a1a20;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    color: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s ease;
-    z-index: 101;
-}
-
-#sidebar.collapsed #sidebar-toggle {
-    transform: rotate(180deg); /* Flip the arrow when collapsed */
-}
-
-#sidebar-toggle:hover {
-    background: #00ffcc;
-    color: #000;
-}
-
-/* --- Documentation Overlay --- */
-#doc-overlay {
-    position: fixed;
-    top: 0;
-    /* Math: Start at sidebar width. If collapsed, start at 40px */
     left: var(--sidebar-width);
-    width: calc(100vw - var(--sidebar-width));
+    /* FIXED: Subtract both left and right panels so it fits perfectly in the middle */
+    width: calc(100vw - var(--sidebar-width) - var(--right-panel-width));
     height: 100vh;
-    background: rgba(10, 10, 12, 0.85);
-    backdrop-filter: blur(10px);
+    background: rgba(12, 12, 15, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     z-index: 50;
     padding: 60px;
     color: #fff;
@@ -185,13 +168,30 @@
     opacity 0.3s ease;
 }
 
-#sidebar.collapsed ~ #doc-overlay {
-    left: 40px;
-    width: calc(100vw - 40px);
+#doc-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
-/* Hide utility */
-.hidden { opacity: 0; pointer-events: none; }
+#sidebar.collapsed ~ #doc-overlay {
+    left: 40px;
+    width: calc(100vw - 40px - var(--right-panel-width));
+}
+
+.doc-content h1 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 15px;
+    font-weight: 700;
+}
+
+.doc-content p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #ccc;
+    max-width: 800px;
+}
 
 /* --- Right Control Panel --- */
 #control-panel {
@@ -200,23 +200,26 @@
     right: 0;
     width: var(--right-panel-width);
     height: 100vh;
-    background: linear-gradient(to left, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.7));
+    background: linear-gradient(225deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.8));
     backdrop-filter: blur(20px);
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border-light);
     z-index: 90;
-    padding: 90px 25px 30px 25px; /* Push padding down so the FPS counter fits above */
+    padding: 90px 24px 30px 24px;
     color: #fff;
-    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
 }
 
 .panel-header {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     margin-bottom: 30px;
     letter-spacing: 1px;
-    color: #00ffcc;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 10px;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 12px;
+    text-transform: uppercase;
 }
 
 .control-group {
@@ -228,11 +231,14 @@
     justify-content: space-between;
     font-size: 0.85rem;
     color: #aaa;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     font-weight: 600;
 }
 
-.highlight { color: #fff; }
+.highlight {
+    color: #fff;
+    font-variant-numeric: tabular-nums; /* Keeps numbers perfectly aligned */
+}
 
 /* Custom Range Slider */
 input[type="range"] {
@@ -241,11 +247,20 @@ input[type="range"] {
     background: transparent;
 }
 
+input[type="range"]:focus {
+    outline: none;
+}
+
 input[type="range"]::-webkit-slider-runnable-track {
     width: 100%;
     height: 4px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 2px;
+    transition: background 0.2s;
+}
+
+input[type="range"]:hover::-webkit-slider-runnable-track {
+    background: rgba(255, 255, 255, 0.25);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -253,20 +268,46 @@ input[type="range"]::-webkit-slider-thumb {
     height: 16px;
     width: 16px;
     border-radius: 50%;
-    background: #00ffcc;
-    margin-top: -6px; /* Center the thumb */
+    background: var(--accent-color);
+    margin-top: -6px;
     cursor: pointer;
-    box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
-    transition: transform 0.1s;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
 }
 
-/* Adjust Dashboard position to align with right panel */
+/* --- Dashboard / FPS Counter --- */
 #dashboard {
-    right: 25px;
-    top: 20px;
-    z-index: 95; /* Keep above the panel */
+    position: fixed;
+    top: 24px;
+    right: calc(var(--right-panel-width) + 24px); /* Float it just inside the main view */
+    z-index: 100;
+    background: rgba(15, 15, 20, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    color: #fff; /* FIXED: Prevents black text */
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* FIXED: The missing neon class */
+.neon {
+    color: var(--accent-color);
+    text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+    font-family: monospace; /* Monospace is great for changing numbers like FPS */
+    font-size: 1.1rem;
+    margin-left: 8px;
+    min-width: 3ch; /* Prevents layout jumping when FPS changes from 9 to 10 */
+    display: inline-block;
+    text-align: right;
 }

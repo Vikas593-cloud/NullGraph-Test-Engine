@@ -59,7 +59,7 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
         }
     `;
 
-    engine.createPipeline({
+    const triangleBatch=engine.createBatch({
         shaderCode: shaderSource,
         strideFloats: STRIDE,
         maxInstances: MAX_INSTANCES
@@ -100,7 +100,7 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
         }
     }
 
-    engine.updateData(data, MAX_INSTANCES);
+    engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
 
     return {
         update: (simTime: number) => {
@@ -123,9 +123,10 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
                     data[pyOffset + i] = originalYPositions[globalIdx] + waveOffset;
                 }
             }
-            engine.updateData(data, MAX_INSTANCES);
+            engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
         },
         destroy: () => {
+            engine.clearBatches();
             console.log("Cleaning up AoSoA Demo");
         }
     };

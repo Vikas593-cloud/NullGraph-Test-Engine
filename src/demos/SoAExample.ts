@@ -46,7 +46,7 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
     `;
 
     // Setup Pipeline
-    engine.createPipeline({
+    const triangleBatch=engine.createBatch({
         shaderCode: shaderSource,
         strideFloats: 14, // Keep total memory footprint same as AoS for a fair test
         maxInstances: MAX_INSTANCES
@@ -82,7 +82,7 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
         data[COLOR_OFFSET + i3 + 2] = Math.random();
     }
 
-    engine.updateData(data, MAX_INSTANCES);
+    engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
 
     return {
         update: (simTime: number) => {
@@ -95,9 +95,10 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
                 const waveOffset = Math.sin(simTime * 3.0 + (xPos * 0.1)) * uiState.amplitude;
                 data[POS_OFFSET + i3 + 1] = originalYPositions[i] + waveOffset;
             }
-            engine.updateData(data, MAX_INSTANCES);
+            engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
         },
         destroy: () => {
+            engine.clearBatches()
             console.log("Cleaning up SoA Demo");
         }
     };

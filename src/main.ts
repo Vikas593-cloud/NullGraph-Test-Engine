@@ -8,6 +8,10 @@ import {setupSoA} from "./demos/SoAExample";
 import {setupAoS} from "./demos/AoSExample";
 import {setupSceneGraph} from "./demos/SceneGraphExample";
 import {setupAoSoA} from "./demos/AoSoAExample";
+import {setup3DCube} from "./demos/3DGeometryExample";
+import {setup3DCubeWithAmbientLight} from "./demos/3DGeometryWithLighting";
+import {setupSpaceFleet} from "./demos/SpaceFleetExample";
+import {setupFireworks} from "./demos/FireWorksExample";
 
 // Global UI State
 let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
@@ -49,6 +53,25 @@ async function main() {
         }
         else if (demoId === 'demo-aosoa') {
             const demo = await setupAoSoA(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-3d-cube') {
+            const demo = await setup3DCube(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-3d-cube-ambient-light') {
+            const demo = await setup3DCubeWithAmbientLight(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }else if (demoId === 'demo-spacefleet') {
+            const demo = await setupSpaceFleet(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-fireworks') {
+            const demo = await setupFireworks(engine, camera, getState);
             activeUpdateLoop = demo.update;
             activeDestroyFunc = demo.destroy;
         }

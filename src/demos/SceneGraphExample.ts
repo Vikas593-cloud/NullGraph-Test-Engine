@@ -2,30 +2,28 @@
 import { NullGraph, Camera } from 'null-graph';
 
 class SceneNode {
+    // NEW: We tag the node so we know which batch it belongs to!
+    type: 'planet' | 'moon' = 'planet';
+
     localPos: [number, number, number] = [0, 0, 0];
     localScale: [number, number, number] = [1, 1, 1];
     color: [number, number, number] = [1, 1, 1];
     children: SceneNode[] = [];
 
-    // Animation properties
     initialAngle: number = Math.random() * Math.PI * 2;
     orbitRadius: number = 0;
     orbitSpeed: number = 0;
 
-    // Cache world transforms
     worldPos: [number, number, number] = [0, 0, 0];
     worldScale: [number, number, number] = [1, 1, 1];
 
-    // Recursive update
     updateTree(simTime: number, amplitude: number, parentPos: [number, number, number], parentScale: [number, number, number]) {
-        // Calculate stateless orbit based on simTime
         if (this.orbitRadius > 0) {
             const currentAngle = this.initialAngle + (simTime * this.orbitSpeed);
-            this.localPos[0] = Math.cos(currentAngle) * this.orbitRadius * amplitude *0.05;
+            this.localPos[0] = Math.cos(currentAngle) * this.orbitRadius * amplitude * 0.05;
             this.localPos[2] = Math.sin(currentAngle) * this.orbitRadius * amplitude * 0.05;
         }
 
-        // Apply parent transforms
         this.worldPos[0] = parentPos[0] + (this.localPos[0] * parentScale[0]);
         this.worldPos[1] = parentPos[1] + (this.localPos[1] * parentScale[1]);
         this.worldPos[2] = parentPos[2] + (this.localPos[2] * parentScale[2]);
@@ -34,43 +32,89 @@ class SceneNode {
         this.worldScale[1] = parentScale[1] * this.localScale[1];
         this.worldScale[2] = parentScale[2] * this.localScale[2];
 
-        // Update children (Pointer chasing!)
         for (const child of this.children) {
             child.updateTree(simTime, amplitude, this.worldPos, this.worldScale);
         }
     }
 
-    // Recursive flatten for the GPU
-    flattenInto(dataArray: Float32Array, context: { index: number }) {
-        if (context.index >= 10000) return; // Cap at max instances
+    // UPGRADED: It now takes TWO arrays and routes data based on its type
+    flattenInto(
+        planetData: Float32Array, planetCtx: { index: number },
+        moonData: Float32Array, moonCtx: { index: number }
+    ) {
+        // Decide which array and counter to use
+        const targetData = this.type === 'planet' ? planetData : moonData;
+        const targetCtx = this.type === 'planet' ? planetCtx : moonCtx;
 
-        const base = context.index * 14;
+        if (targetCtx.index < 10000) {
+            const base = targetCtx.index * 14;
 
-        dataArray[base + 1] = this.worldPos[0];
-        dataArray[base + 2] = this.worldPos[1];
-        dataArray[base + 3] = this.worldPos[2];
+            targetData[base + 1] = this.worldPos[0];
+            targetData[base + 2] = this.worldPos[1];
+            targetData[base + 3] = this.worldPos[2];
 
-        dataArray[base + 8] = this.worldScale[0];
-        dataArray[base + 9] = this.worldScale[1];
-        dataArray[base + 10] = this.worldScale[2];
+            targetData[base + 8] = this.worldScale[0];
+            targetData[base + 9] = this.worldScale[1];
+            targetData[base + 10] = this.worldScale[2];
 
-        dataArray[base + 11] = this.color[0];
-        dataArray[base + 12] = this.color[1];
-        dataArray[base + 13] = this.color[2];
+            targetData[base + 11] = this.color[0];
+            targetData[base + 12] = this.color[1];
+            targetData[base + 13] = this.color[2];
 
-        context.index++;
+            targetCtx.index++;
+        }
 
         for (const child of this.children) {
-            child.flattenInto(dataArray, context);
+            child.flattenInto(planetData, planetCtx, moonData, moonCtx);
         }
     }
 }
 
 export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
-    const MAX_INSTANCES = 10000;
 
-    // We reuse the AoS shader because we are ultimately flattening the tree
-    // into the same buffer layout. The difference here is how the CPU calculates it!
+
+    const cubeVertices = new Float32Array([
+        // Front face (Looking +Z)
+        -0.5, -0.5,  0.5,   0, 0, 1,    0.5, -0.5,  0.5,   0, 0, 1,
+        0.5,  0.5,  0.5,   0, 0, 1,   -0.5,  0.5,  0.5,   0, 0, 1,
+        // Back face (Looking -Z)
+        0.5, -0.5, -0.5,   0, 0, -1,  -0.5, -0.5, -0.5,   0, 0, -1,
+        -0.5,  0.5, -0.5,   0, 0, -1,   0.5,  0.5, -0.5,   0, 0, -1,
+        // Right face (Looking +X)
+        0.5, -0.5,  0.5,   1, 0, 0,    0.5, -0.5, -0.5,   1, 0, 0,
+        0.5,  0.5, -0.5,   1, 0, 0,    0.5,  0.5,  0.5,   1, 0, 0,
+        // Left face (Looking -X)
+        -0.5, -0.5, -0.5,  -1, 0, 0,   -0.5, -0.5,  0.5,  -1, 0, 0,
+        -0.5,  0.5,  0.5,  -1, 0, 0,   -0.5,  0.5, -0.5,  -1, 0, 0,
+        // Top face (Looking +Y)
+        -0.5,  0.5,  0.5,   0, 1, 0,    0.5,  0.5,  0.5,   0, 1, 0,
+        0.5,  0.5, -0.5,   0, 1, 0,   -0.5,  0.5, -0.5,   0, 1, 0,
+        // Bottom face (Looking -Y)
+        -0.5, -0.5, -0.5,   0, -1, 0,   0.5, -0.5, -0.5,   0, -1, 0,
+        0.5, -0.5,  0.5,   0, -1, 0,   -0.5, -0.5,  0.5,   0, -1, 0,
+    ]);
+    const cubeIndices = new Uint16Array([
+        0, 1, 2, 2, 3, 0,       // Front
+        4, 5, 6, 6, 7, 4,       // Back
+        8, 9, 10, 10, 11, 8,    // Right
+        12, 13, 14, 14, 15, 12, // Left
+        16, 17, 18, 18, 19, 16, // Top
+        20, 21, 22, 22, 23, 20  // Bottom
+    ]);
+
+    const quadVertices = new Float32Array([
+        // Flat diamond shape for moons
+        -0.5, 0.0,  0.0,   0, 1, 0,    0.0, 0.0,  0.5,   0, 1, 0,
+        0.5, 0.0,  0.0,   0, 1, 0,    0.0, 0.0, -0.5,   0, 1, 0,
+    ]);
+    const quadIndices = new Uint16Array([0, 1, 2, 2, 3, 0]);
+
+    const cubeVBO = engine.bufferManager.createVertexBuffer(cubeVertices);
+    const cubeIBO = engine.bufferManager.createIndexBuffer(cubeIndices);
+    const quadVBO = engine.bufferManager.createVertexBuffer(quadVertices);
+    const quadIBO = engine.bufferManager.createIndexBuffer(quadIndices);
+
+    // 2. THE SHADER
     const shaderSource = `
         struct Camera { viewProj: mat4x4<f32> };
         @group(0) @binding(0) var<uniform> camera: Camera;
@@ -82,18 +126,20 @@ export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiSt
         };
 
         @vertex
-        fn vs_main(@builtin(vertex_index) vIdx: u32, @builtin(instance_index) iIdx: u32) -> VertexOut {
+        fn vs_main(@location(0) localPos: vec3<f32>, @location(1) localNorm: vec3<f32>, @builtin(instance_index) iIdx: u32) -> VertexOut {
             let base = iIdx * 14u;
             let pos = vec3<f32>(ecs[base + 1u], ecs[base + 2u], ecs[base + 3u]);
             let scale = vec3<f32>(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
             let color = vec3<f32>(ecs[base + 11u], ecs[base + 12u], ecs[base + 13u]);
 
-            var tri = array<vec2<f32>, 3>(vec2(0.0, 0.5), vec2(-0.5, -0.5), vec2(0.5, -0.5));
-            let worldPos = (vec3<f32>(tri[vIdx], 0.0) * scale) + pos;
+            let worldPos = (localPos * scale) + pos;
 
             var out: VertexOut;
             out.pos = camera.viewProj * vec4<f32>(worldPos, 1.0);
-            out.color = color;
+            
+            // Simple lighting based on normal
+            let light = max(dot(localNorm, normalize(vec3<f32>(1.0, 1.0, 0.5))), 0.2);
+            out.color = color * light;
             return out;
         }
 
@@ -103,58 +149,74 @@ export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiSt
         }
     `;
 
-    engine.createPipeline({
+    // 3. CREATE TWO BATCHES!
+    const pipelineConfig = {
         shaderCode: shaderSource,
         strideFloats: 14,
-        maxInstances: MAX_INSTANCES
-    });
+        maxInstances: 10000,
+        vertexLayouts: [{
+            arrayStride: 6 * 4,
+            attributes: [
+                { shaderLocation: 0, offset: 0, format: 'float32x3' as GPUVertexFormat },
+                { shaderLocation: 1, offset: 12, format: 'float32x3' as GPUVertexFormat }
+            ]
+        }]
+    };
 
+    const planetBatch = engine.createBatch(pipelineConfig);
+    engine.setBatchGeometry(planetBatch, cubeVBO, cubeIBO, cubeIndices.length);
+
+    const moonBatch = engine.createBatch(pipelineConfig);
+    engine.setBatchGeometry(moonBatch, quadVBO, quadIBO, quadIndices.length);
+
+    // 4. BUILD THE TREE
     const root = new SceneNode();
-    root.color = [1, 1, 0]; // Sun
+    root.type = 'planet';
+    root.color = [1, 1, 0];
     root.localScale = [5, 5, 5];
 
-    let instanceCount = 1;
-    const planetsToCreate = 100;
-
-    for (let p = 0; p < planetsToCreate; p++) {
-        if (instanceCount >= MAX_INSTANCES) break;
-
+    for (let p = 0; p < 100; p++) {
         const planet = new SceneNode();
+        planet.type = 'planet';
         planet.orbitRadius = 10 + Math.random() * 80;
         planet.orbitSpeed = (Math.random() - 0.5) * 5;
         planet.color = [Math.random(), Math.random(), 1.0];
         planet.localScale = [0.5, 0.5, 0.5];
         root.children.push(planet);
-        instanceCount++;
 
-        const moonsToCreate = 99; // roughly 100 * 100 = 10,000 total
-        for (let m = 0; m < moonsToCreate; m++) {
-            if (instanceCount >= MAX_INSTANCES) break;
-
+        for (let m = 0; m < 99; m++) {
             const moon = new SceneNode();
+            moon.type = 'moon'; // Tagged as a moon!
             moon.orbitRadius = 2 + Math.random() * 5;
             moon.orbitSpeed = (Math.random() - 0.5) * 15;
             moon.color = [0.8, 0.8, 0.8];
             moon.localScale = [0.2, 0.2, 0.2];
             planet.children.push(moon);
-            instanceCount++;
         }
     }
 
-    const gpuBufferData = new Float32Array(MAX_INSTANCES * 14);
+    // 5. SEPARATE GPU BUFFERS
+    const planetData = new Float32Array(10000 * 14);
+    const moonData = new Float32Array(10000 * 14);
 
     return {
         update: (simTime: number) => {
             const uiState = getUiState();
 
+            // 1. Calculate CPU Math
             root.updateTree(simTime, uiState.amplitude, [0, 0, 0], [1, 1, 1]);
 
-            const context = { index: 0 };
-            root.flattenInto(gpuBufferData, context);
+            // 2. Flatten and Route into separate arrays
+            const planetCtx = { index: 0 };
+            const moonCtx = { index: 0 };
+            root.flattenInto(planetData, planetCtx, moonData, moonCtx);
 
-            engine.updateData(gpuBufferData, MAX_INSTANCES);
+            // 3. Upload to their respective GPU batches
+            engine.updateBatchData(planetBatch, planetData, planetCtx.index);
+            engine.updateBatchData(moonBatch, moonData, moonCtx.index);
         },
         destroy: () => {
+            engine.clearBatches();
             console.log("Cleaning up OOP Scene Graph Demo");
         }
     };
