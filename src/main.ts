@@ -1,70 +1,109 @@
+// main.ts
+import './style.css';
 import { NullGraph, Camera } from 'null-graph';
+import { generateDummyData } from './data';
+import gsap from 'gsap';
+import { initUI, UIState } from "./ui";
+import {setupSoA} from "./demos/SoAExample";
+import {setupAoS} from "./demos/AoSExample";
+import {setupSceneGraph} from "./demos/SceneGraphExample";
+import {setupAoSoA} from "./demos/AoSoAExample";
 
+// Global UI State
+let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
+
+// ---------------------------------------------------------
+// MAIN ENGINE & RENDER LOOP
+// ---------------------------------------------------------
 async function main() {
     const canvas = document.getElementById('gpuCanvas') as HTMLCanvasElement;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // 1. Initialize Engine from the npm package
     const engine = new NullGraph();
     await engine.init(canvas);
-
-    // 2. Initialize Camera
     const camera = new Camera(75, canvas.width / canvas.height, 0.1, 1000.0);
 
-    // 3. Generate Dummy ECS Data (Matches your 14-float stride)
-    const entityCount = 10000;
-    const stride = 14;
-    const dummyEcsData = new Float32Array(entityCount * stride);
+    // Dynamic Demo State
+    let activeUpdateLoop: ((simTime: number) => void) | null = null;
+    let activeDestroyFunc: (() => void) | null = null;
 
-    for (let i = 0; i < entityCount; i++) {
-        const base = i * stride;
-        dummyEcsData[base + 0] = i; // ID
+    // Switch Demos based on UI clicks
+    const loadDemo = async (demoId: string) => {
+        if (activeDestroyFunc) activeDestroyFunc(); // Clean up old demo
+        const getState = () => uiState;
+        if (demoId === 'demo-aos') {
+            const demo = await setupAoS(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-soa') {
+            const demo = await setupSoA(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-oop') {
+            const demo = await setupSceneGraph(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-aosoa') {
+            const demo = await setupAoSoA(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        // ... add anim-cpu and anim-gpu here later
+    };
 
-        // POS
-        dummyEcsData[base + 1] = (Math.random() - 0.5) * 100;
-        dummyEcsData[base + 2] = (Math.random() - 0.5) * 100;
-        dummyEcsData[base + 3] = (Math.random() - 0.5) * 100;
+    // Initialize UI
+    const ui = initUI(
+        (newState) => { uiState = newState; },
+        (demoId) => { loadDemo(demoId); }
+    );
 
-        // SCALE
-        dummyEcsData[base + 8] = Math.random() * 2 + 0.5;
-        dummyEcsData[base + 9] = Math.random() * 2 + 0.5;
-        dummyEcsData[base + 10] = Math.random() * 2 + 0.5;
+    let simTime = 0;
+    let lastFrameTime = performance.now();
+    let lastFpsTime = performance.now();
+    let frames = 0;
+    let camControl = { radius: 100 };
 
-        // COLOR
-        dummyEcsData[base + 11] = Math.random(); // R
-        dummyEcsData[base + 12] = Math.random(); // G
-        dummyEcsData[base + 13] = Math.random(); // B
-    }
+    document.getElementById('action-btn')?.addEventListener('click', () => {
+        gsap.to(camControl, { radius: 40, duration: 0.6, yoyo: true, repeat: 1, ease: "power2.inOut" });
+    });
 
-    // Push entities to GPU Storage Buffer
-    engine.updateEntities(dummyEcsData, entityCount);
-
-    // 4. Render Loop
-    let time = 0;
+    // The Single Render Loop
     function frame() {
-        time += 0.01;
+        const now = performance.now();
+        const deltaTime = (now - lastFrameTime) * 0.001;
+        lastFrameTime = now;
+        simTime += deltaTime * uiState.timeScale;
+        frames++;
 
-        // Spin camera around the origin
-        const radius = 80;
-        const camX = Math.sin(time) * radius;
-        const camZ = Math.cos(time) * radius;
-        camera.updateView([camX, 20, camZ], [0, 0, 0]);
+        if (activeUpdateLoop) {
+            activeUpdateLoop(simTime);
+        }
 
-        // Push uniform updates and draw
+
+        if (now - lastFpsTime >= 1000) {
+            ui.updateFPS(frames);
+            frames = 0;
+            lastFpsTime = now;
+        }
+
+
+        camera.updateView(
+            [Math.sin(simTime) * camControl.radius, 30, Math.cos(simTime) * camControl.radius],
+            [0, 0, 0]
+        );
         engine.updateCamera(camera);
         engine.render();
 
         requestAnimationFrame(frame);
     }
 
+    // Load default demo and start loop
+    await loadDemo('demo-aos');
     frame();
-
-    // Basic resize handler
-    window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    });
 }
 
-main().catch(console.error);
+main();

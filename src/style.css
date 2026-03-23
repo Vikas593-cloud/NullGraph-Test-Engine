@@ -1,0 +1,272 @@
+/* src/style.css */
+:root {
+    --sidebar-width: 320px;
+    --transition-speed: 0.4s;
+}
+#gpuCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; /* Keep the 3D world in the background */
+}
+#sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: linear-gradient(to right, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.7));
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+    padding: 40px 30px;
+    color: #fff;
+    transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+#dashboard {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100; /* Also force UI above canvas */
+    background: rgba(10, 10, 12, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Make titles pop */
+.nav-header {
+    font-size: 1.6rem;
+    font-weight: 900;
+    margin-bottom: 50px;
+    letter-spacing: 2px;
+}
+
+.nav-header span { color: #00ffcc; }
+
+.nav-section {
+    color: #666;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    margin: 25px 0 10px 0;
+}
+
+.nav-item {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.doc-text {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #999;
+}
+
+/* Keep your existing canvas, sidebar, and dashboard CSS... */
+
+/* --- UI Interactions & Hierarchy --- */
+.nav-item {
+    font-weight: 600;
+    margin-bottom: 5px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+    color: #999;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+/* The active state for the currently selected page/demo */
+.nav-item.active {
+    background: rgba(0, 255, 204, 0.1);
+    color: #00ffcc;
+    border-left: 3px solid #00ffcc;
+}
+
+/* Indent sub-items to create hierarchy */
+.sub-nav {
+    padding-left: 24px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* --- Documentation Overlay --- */
+#doc-overlay {
+    position: fixed;
+    top: 0;
+    left: 320px; /* Start AFTER the sidebar */
+    width: calc(100vw - 320px);
+    height: 100vh;
+    background: rgba(10, 10, 12, 0.85); /* Darken the canvas behind it */
+    backdrop-filter: blur(10px); /* Blur the WebGPU canvas slightly */
+    z-index: 50;
+    padding: 60px;
+    color: #fff;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
+}
+
+.doc-view h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.doc-view p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #ccc;
+    max-width: 800px;
+}
+
+
+/* The collapsed state */
+#sidebar.collapsed {
+    transform: translateX(calc(-100% + 40px)); /* Leaves a tiny sliver visible for the button */
+}
+
+/* Sidebar Toggle Button */
+#sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: -20px; /* Hangs off the edge */
+    width: 40px;
+    height: 40px;
+    background: #1a1a20;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+    z-index: 101;
+}
+
+#sidebar.collapsed #sidebar-toggle {
+    transform: rotate(180deg); /* Flip the arrow when collapsed */
+}
+
+#sidebar-toggle:hover {
+    background: #00ffcc;
+    color: #000;
+}
+
+/* --- Documentation Overlay --- */
+#doc-overlay {
+    position: fixed;
+    top: 0;
+    /* Math: Start at sidebar width. If collapsed, start at 40px */
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width));
+    height: 100vh;
+    background: rgba(10, 10, 12, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 50;
+    padding: 60px;
+    color: #fff;
+    overflow-y: auto;
+    transition: left var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    width var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 0.3s ease;
+}
+
+#sidebar.collapsed ~ #doc-overlay {
+    left: 40px;
+    width: calc(100vw - 40px);
+}
+
+/* Hide utility */
+.hidden { opacity: 0; pointer-events: none; }
+
+/* --- Right Control Panel --- */
+#control-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--right-panel-width);
+    height: 100vh;
+    background: linear-gradient(to left, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.7));
+    backdrop-filter: blur(20px);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 90;
+    padding: 90px 25px 30px 25px; /* Push padding down so the FPS counter fits above */
+    color: #fff;
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5);
+}
+
+.panel-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+    color: #00ffcc;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.control-group {
+    margin-bottom: 25px;
+}
+
+.control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.highlight { color: #fff; }
+
+/* Custom Range Slider */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #00ffcc;
+    margin-top: -6px; /* Center the thumb */
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+    transition: transform 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Adjust Dashboard position to align with right panel */
+#dashboard {
+    right: 25px;
+    top: 20px;
+    z-index: 95; /* Keep above the panel */
+}

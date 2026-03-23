@@ -1,2 +1,11 @@
 node_modules
 package-lock.json
+firebase.json
+.firebaserc
+yalc.lock
+.yalc
+.idea
+.env
+git-commit.py
+git_commit.sh
+venv

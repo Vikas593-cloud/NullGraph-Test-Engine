@@ -2,15 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NullGraph Demo</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #111; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-    </style>
+    <title>NullGraph Engine</title>
+    <link rel="stylesheet" href="bundle.css">
 </head>
 <body>
 <canvas id="gpuCanvas"></canvas>
+
+<main id="doc-overlay" class="hidden">
+    <div id="doc-content"></div>
+</main>
+
+<aside id="sidebar">
+    <button id="sidebar-toggle" aria-label="Toggle Sidebar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+
+    <div class="nav-header">NULL<span>GRAPH</span></div>
+
+    <div class="nav-section">Documentation</div>
+    <div class="nav-item" data-target="intro">Introduction</div>
+    <div class="nav-item" data-target="config">Configuration</div>
+
+    <div class="nav-section">Architecture Demos</div>
+    <div class="nav-item sub-nav" data-demo="demo-aos">AoS (Array of Structs)</div>
+    <div class="nav-item sub-nav" data-demo="demo-soa">SoA (Struct of Arrays)</div>
+    <div class="nav-item sub-nav" data-demo="demo-aosoa">AoSoA (Chunked SoA)</div>
+    <div class="nav-item sub-nav" data-demo="demo-oop">OOP (Scene Graph)</div>
+
+    <div class="nav-section">Animation Examples</div>
+    <div class="nav-item sub-nav" data-demo="anim-cpu">CPU Data Upload</div>
+    <div class="nav-item sub-nav" data-demo="anim-gpu">GPU Shader Time</div>
+</aside>
+<aside id="control-panel">
+    <div class="panel-header">Engine Controls</div>
+
+    <div class="control-group">
+        <label for="speed-slider">Time Scale: <span id="speed-val" class="highlight">0.3</span>x</label>
+        <input type="range" id="speed-slider" min="0" max="1" step="0.02" value="0.3">
+    </div>
+
+    <div class="control-group">
+        <label for="amp-slider">Wave Amplitude: <span id="amp-val" class="highlight">2.0</span></label>
+        <input type="range" id="amp-slider" min="0" max="10" step="0.5" value="2.0">
+    </div>
+</aside>
+
+<div id="dashboard">
+    <div class="stat">FPS: <span id="ui-fps" class="neon">0</span></div>
+</div>
+
 <script type="module" src="bundle.js"></script>
 </body>
 </html>
