@@ -1,5 +1,3 @@
-/* src/style.css */
-
 /* --- CSS Reset & Variables --- */
 * {
     box-sizing: border-box;
@@ -9,93 +7,86 @@
 
 :root {
     --sidebar-width: 300px;
-    --right-panel-width: 280px; /* Added missing variable */
+    --right-panel-width: 280px;
     --transition-speed: 0.4s;
-    --accent-color: #00ffcc; /* Centralized theme color */
+    --accent-color: #00ffcc;
     --bg-dark: rgba(12, 12, 16, 0.85);
     --border-light: rgba(255, 255, 255, 0.08);
 }
 
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    overflow: hidden; /* Prevent body scrolling, let internal panels scroll */
-    background-color: #000; /* Fallback before canvas loads */
+    overflow: hidden;
+    background-color: #000;
 }
 
-/* --- Custom Scrollbar for a Professional Look --- */
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
-}
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
 
 /* --- 3D Canvas --- */
 #gpuCanvas {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
     z-index: 1;
 }
 
-/* --- Left Sidebar --- */
+/* --- Sidebar --- */
 #sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     width: var(--sidebar-width);
     height: 100vh;
     background: linear-gradient(135deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.8));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-right: 1px solid var(--border-light);
-    z-index: 100;
-    padding: 40px 24px;
+    z-index: 1000;
     color: #fff;
-    overflow-y: auto;
     transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+
+    /* CRITICAL: Must remain visible so the button doesn't get clipped */
+    overflow: visible;
 }
 
 #sidebar.collapsed {
-    transform: translateX(calc(-100% + 40px));
+    transform: translateX(-100%);
+}
+
+/* NEW: The inner scroll wrapper */
+.sidebar-scroll-area {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto; /* Handles the scrolling */
+    overflow-x: hidden;
+    padding: 40px 24px;
 }
 
 #sidebar-toggle {
     position: absolute;
     top: 24px;
-    right: -20px;
-    width: 40px;
-    height: 40px;
-    background: #1a1a20;
-    border: 1px solid var(--border-light);
-    border-radius: 50%;
-    color: #fff;
+    right: -44px; /* Matches button width perfectly */
+    width: 44px;
+    height: 44px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 0 8px 8px 0;
+    color: #000;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    z-index: 101;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 1001;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    transition: transform var(--transition-speed) ease;
 }
 
-#sidebar.collapsed #sidebar-toggle {
+#sidebar.collapsed #sidebar-toggle svg {
     transform: rotate(180deg);
-}
-
-#sidebar-toggle:hover {
-    background: var(--accent-color);
-    color: #000;
-    border-color: var(--accent-color);
+    transition: transform 0.3s ease;
 }
 
 /* --- Sidebar Navigation Styling --- */
@@ -105,10 +96,7 @@ body {
     margin-bottom: 40px;
     letter-spacing: 2px;
 }
-
-.nav-header span {
-    color: var(--accent-color);
-}
+.nav-header span { color: var(--accent-color); }
 
 .nav-section {
     color: #777;
@@ -153,7 +141,6 @@ body {
     position: fixed;
     top: 0;
     left: var(--sidebar-width);
-    /* FIXED: Subtract both left and right panels so it fits perfectly in the middle */
     width: calc(100vw - var(--sidebar-width) - var(--right-panel-width));
     height: 100vh;
     background: rgba(12, 12, 15, 0.7);
@@ -173,9 +160,10 @@ body {
     pointer-events: none;
 }
 
+/* Smooth expansion when sidebar collapses */
 #sidebar.collapsed ~ #doc-overlay {
-    left: 40px;
-    width: calc(100vw - 40px - var(--right-panel-width));
+    left: 0; /* Changed from 40px to 0 for a flush look */
+    width: calc(100vw - var(--right-panel-width));
 }
 
 .doc-content h1 {
@@ -222,9 +210,7 @@ body {
     text-transform: uppercase;
 }
 
-.control-group {
-    margin-bottom: 25px;
-}
+.control-group { margin-bottom: 25px; }
 
 .control-group label {
     display: flex;
@@ -237,7 +223,7 @@ body {
 
 .highlight {
     color: #fff;
-    font-variant-numeric: tabular-nums; /* Keeps numbers perfectly aligned */
+    font-variant-numeric: tabular-nums;
 }
 
 /* Custom Range Slider */
@@ -246,27 +232,19 @@ input[type="range"] {
     width: 100%;
     background: transparent;
 }
-
-input[type="range"]:focus {
-    outline: none;
-}
-
+input[type="range"]:focus { outline: none; }
 input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
+    width: 100%; height: 4px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 2px;
     transition: background 0.2s;
 }
-
 input[type="range"]:hover::-webkit-slider-runnable-track {
     background: rgba(255, 255, 255, 0.25);
 }
-
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 16px;
-    width: 16px;
+    height: 16px; width: 16px;
     border-radius: 50%;
     background: var(--accent-color);
     margin-top: -6px;
@@ -274,7 +252,6 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
 input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.2);
     box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
@@ -284,7 +261,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 #dashboard {
     position: fixed;
     top: 24px;
-    right: calc(var(--right-panel-width) + 24px); /* Float it just inside the main view */
+    right: calc(var(--right-panel-width) + 24px);
     z-index: 100;
     background: rgba(15, 15, 20, 0.8);
     backdrop-filter: blur(10px);
@@ -294,20 +271,377 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border: 1px solid var(--border-light);
     display: flex;
     align-items: center;
-    color: #fff; /* FIXED: Prevents black text */
+    color: #fff;
     font-weight: 600;
     font-size: 0.9rem;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
-/* FIXED: The missing neon class */
 .neon {
     color: var(--accent-color);
     text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
-    font-family: monospace; /* Monospace is great for changing numbers like FPS */
+    font-family: monospace;
     font-size: 1.1rem;
     margin-left: 8px;
-    min-width: 3ch; /* Prevents layout jumping when FPS changes from 9 to 10 */
+    min-width: 3ch;
     display: inline-block;
     text-align: right;
+}
+
+/* --- Responsive Fixes --- */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 250px;
+        --right-panel-width: 220px;
+    }
+    #doc-overlay { padding: 40px; }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 280px;
+        --right-panel-width: 100%;
+    }
+
+    #sidebar-toggle {
+        right: -44px; /* Matched to new button width */
+        top: 15px;
+        z-index: 200;
+    }
+
+    #sidebar {
+        z-index: 150;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+
+    #doc-overlay {
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 500;
+        padding: 80px 20px;
+    }
+
+    #control-panel {
+        top: auto;
+        bottom: 0;
+        height: 35vh; /* Give it a set max-height on mobile so it doesn't take over entirely */
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-light);
+        padding: 20px;
+        z-index: 110;
+        background: rgba(10, 10, 12, 0.95);
+    }
+
+    .panel-header {
+        margin-bottom: 15px;
+        font-size: 0.9rem;
+    }
+
+    .control-group { margin-bottom: 15px; }
+
+    #dashboard {
+        top: 15px;
+        right: 15px;
+        font-size: 0.7rem;
+        padding: 5px 12px;
+    }
+}
+
+/* --- Update doc-overlay logic using body classes --- */
+/* Remove the old `#sidebar.collapsed ~ #doc-overlay` block entirely */
+
+/* Default state: Both panels open */
+#doc-overlay {
+    /* ... keep your existing properties (position, background, z-index, etc) ... */
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width) - var(--right-panel-width));
+    transition: left var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    width var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 0.3s ease;
+}
+
+/* State 1: Left closed, Right open */
+body.left-collapsed #doc-overlay {
+    left: 0;
+    width: calc(100vw - var(--right-panel-width));
+}
+
+/* State 2: Left open, Right closed */
+body.right-collapsed #doc-overlay {
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width));
+}
+
+/* State 3: Both closed */
+body.left-collapsed.right-collapsed #doc-overlay {
+    left: 0;
+    width: 100vw;
+}
+
+/* --- Ensure FPS Dashboard moves when right panel closes --- */
+#dashboard {
+    /* ... keep existing properties ... */
+    transition: right var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body.right-collapsed #dashboard {
+    right: 24px; /* Slides flush to the right edge of the screen */
+}
+
+/* --- Right Control Panel CSS --- */
+#control-panel {
+    /* Modify existing control-panel block: */
+    transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+    overflow: visible; /* CRITICAL: Prevents button clipping */
+    padding: 0; /* Move padding to scroll area */
+}
+
+#control-panel.collapsed {
+    transform: translateX(100%);
+}
+
+.right-panel-scroll-area {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 90px 24px 30px 24px; /* Padding moved here */
+}
+
+#right-panel-toggle {
+    position: absolute;
+    top: 24px;
+    left: -44px; /* Sticks out to the left */
+    width: 44px;
+    height: 44px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 8px 0 0 8px; /* Rounded on the left */
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    transition: transform var(--transition-speed) ease;
+}
+
+#control-panel.collapsed #right-panel-toggle svg {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+/* --- Update doc-overlay logic using body classes --- */
+/* Remove the old `#sidebar.collapsed ~ #doc-overlay` block entirely */
+
+/* Default state: Both panels open */
+#doc-overlay {
+    /* ... keep your existing properties (position, background, z-index, etc) ... */
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width) - var(--right-panel-width));
+    transition: left var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    width var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 0.3s ease;
+}
+
+/* State 1: Left closed, Right open */
+body.left-collapsed #doc-overlay {
+    left: 0;
+    width: calc(100vw - var(--right-panel-width));
+}
+
+/* State 2: Left open, Right closed */
+body.right-collapsed #doc-overlay {
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width));
+}
+
+/* State 3: Both closed */
+body.left-collapsed.right-collapsed #doc-overlay {
+    left: 0;
+    width: 100vw;
+}
+
+/* --- Ensure FPS Dashboard moves when right panel closes --- */
+#dashboard {
+    /* ... keep existing properties ... */
+    transition: right var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body.right-collapsed #dashboard {
+    right: 24px; /* Slides flush to the right edge of the screen */
+}
+
+/* --- Right Control Panel CSS --- */
+#control-panel {
+    /* Modify existing control-panel block: */
+    transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+    overflow: visible; /* CRITICAL: Prevents button clipping */
+    padding: 0; /* Move padding to scroll area */
+}
+
+#control-panel.collapsed {
+    transform: translateX(100%);
+}
+
+.right-panel-scroll-area {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 90px 24px 30px 24px; /* Padding moved here */
+}
+
+#right-panel-toggle {
+    position: absolute;
+    top: 24px;
+    left: -44px; /* Sticks out to the left */
+    width: 44px;
+    height: 44px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 8px 0 0 8px; /* Rounded on the left */
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    transition: transform var(--transition-speed) ease;
+}
+
+#control-panel.collapsed #right-panel-toggle svg {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+/* --- Responsive Updates for Mobile (@media max-width: 768px) --- */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 280px;
+        --right-panel-width: 100%;
+    }
+
+    /* --- Left Sidebar Mobile Fixes --- */
+    #sidebar-toggle {
+        right: -44px;
+        top: 15px;
+        z-index: 200;
+    }
+
+    #sidebar {
+        z-index: 150;
+        height: 100dvh;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+
+    .sidebar-scroll-area {
+        padding: 20px; /* Reduce heavy desktop padding */
+    }
+
+    /* --- Center Content Mobile Fixes --- */
+    #doc-overlay {
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 500;
+        padding: 80px 20px;
+    }
+
+    /* --- Right Control Panel (Bottom Drawer) Mobile Fixes --- */
+    #control-panel {
+        top: auto;
+        bottom: 0;
+        height: 40vh; /* Slightly taller to comfortably fit the sliders */
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-light);
+        padding: 0; /* CRITICAL FIX: Remove padding from outer container */
+        z-index: 110;
+        background: rgba(10, 10, 12, 0.95);
+    }
+
+    #control-panel.collapsed {
+        transform: translateY(100%);
+    }
+
+    .right-panel-scroll-area {
+        /* CRITICAL FIX: Overwrite the 90px top desktop padding */
+        padding: 20px 24px 30px 24px;
+    }
+
+    #right-panel-toggle {
+        left: auto;
+        right: 24px;
+        top: -44px;
+        border-radius: 8px 8px 0 0;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+    }
+
+    #right-panel-toggle svg {
+        transform: rotate(90deg);
+    }
+
+    #control-panel.collapsed #right-panel-toggle svg {
+        transform: rotate(-90deg);
+    }
+
+    .panel-header {
+        margin-bottom: 15px;
+        font-size: 0.9rem;
+    }
+
+    .control-group { margin-bottom: 15px; }
+
+    /* --- Dashboard Mobile Fixes --- */
+    #dashboard {
+        top: 15px;
+        right: 15px;
+        font-size: 0.7rem;
+        padding: 5px 12px;
+    }
+}
+
+/* --- Documentation Close Button --- */
+#close-docs {
+    position: absolute;
+    top: 40px;
+    right: 50px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-light);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 60; /* Ensures it stays above the text */
+}
+
+#close-docs:hover {
+    background: rgba(255, 50, 50, 0.2); /* Subtle red tint on hover */
+    border-color: rgba(255, 50, 50, 0.5);
+    color: #ff4444;
+    transform: scale(1.1);
+}
+
+/* Adjust position for smaller screens */
+@media (max-width: 1024px) {
+    #close-docs {
+        top: 30px;
+        right: 30px;
+    }
+}
+
+@media (max-width: 768px) {
+    #close-docs {
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.5); /* Darker on mobile for contrast */
+    }
 }

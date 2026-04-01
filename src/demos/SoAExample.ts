@@ -1,5 +1,6 @@
 // demos/SoAExample.ts
 import { NullGraph, Camera } from 'null-graph';
+import {pyramidIndices, pyramidVertices} from "../data";
 
 export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
     const MAX_INSTANCES = 10000;
@@ -16,7 +17,7 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
         };
 
         @vertex
-        fn vs_main(@builtin(vertex_index) vIdx: u32, @builtin(instance_index) iIdx: u32) -> VertexOut {
+        fn vs_main(@location(0) localPos:vec3<f32>, @builtin(instance_index) iIdx: u32) -> VertexOut {
             let MAX_INSTANCES = ${MAX_INSTANCES}u;
             let i3 = iIdx * 3u;
             
@@ -30,8 +31,8 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
             let scale = vec3<f32>(ecs[scaleBase], ecs[scaleBase + 1u], ecs[scaleBase + 2u]);
             let color = vec3<f32>(ecs[colorBase], ecs[colorBase + 1u], ecs[colorBase + 2u]);
 
-            var tri = array<vec2<f32>, 3>(vec2(0.0, 0.5), vec2(-0.5, -0.5), vec2(0.5, -0.5));
-            let worldPos = (vec3<f32>(tri[vIdx], 0.0) * scale) + pos;
+         
+            let worldPos = (localPos * scale) + pos;
 
             var out: VertexOut;
             out.pos = camera.viewProj * vec4<f32>(worldPos, 1.0);
@@ -41,15 +42,40 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
 
         @fragment
         fn fs_main(@location(0) color: vec3<f32>) -> @location(0) vec4<f32> {
+          let ambientLight=0.2;
+          
             return vec4<f32>(color, 1.0);
         }
     `;
+    const pyramidVbo=engine.bufferManager.createVertexBuffer(pyramidVertices)
+    const pyramidIbo=engine.bufferManager.createIndexBuffer(pyramidIndices)
+    const mainPass = engine.createPass({
+        name: 'SoA Main Pass',
+        isMainScreenPass: true
+    });
 
     // Setup Pipeline
-    const triangleBatch=engine.createBatch({
+    const pyramidBatch=engine.createBatch(mainPass,{
         shaderCode: shaderSource,
         strideFloats: 14, // Keep total memory footprint same as AoS for a fair test
-        maxInstances: MAX_INSTANCES
+        maxInstances: MAX_INSTANCES,
+        vertexLayouts:[
+            {
+                arrayStride:24,
+                attributes:[
+                    {
+                        shaderLocation:0,
+                        offset:0,
+                        format:'float32x3',
+                    },
+                    {
+                        shaderLocation:1,
+                        offset:12,
+                        format:'float32x3'
+                    }
+                ]
+            }
+        ]
     });
 
     // Generate Struct of Arrays Data
@@ -82,7 +108,8 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
         data[COLOR_OFFSET + i3 + 2] = Math.random();
     }
 
-    engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
+    engine.setBatchGeometry(pyramidBatch,pyramidVbo,pyramidIbo,pyramidIndices.length)
+    engine.updateBatchData(pyramidBatch,data, MAX_INSTANCES);
 
     return {
         update: (simTime: number) => {
@@ -95,10 +122,10 @@ export async function setupSoA(engine: NullGraph, camera: Camera, getUiState: ()
                 const waveOffset = Math.sin(simTime * 3.0 + (xPos * 0.1)) * uiState.amplitude;
                 data[POS_OFFSET + i3 + 1] = originalYPositions[i] + waveOffset;
             }
-            engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
+            engine.updateBatchData(pyramidBatch,data, MAX_INSTANCES);
         },
         destroy: () => {
-            engine.clearBatches()
+            engine.clearPasses()
             console.log("Cleaning up SoA Demo");
         }
     };

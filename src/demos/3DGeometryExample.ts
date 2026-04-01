@@ -1,27 +1,18 @@
 // demos/Geometry3DExample.ts
 import { NullGraph, Camera } from 'null-graph';
+import {PositionOnlyLayout, Primitives} from "null-graph/geometry";
 
 export async function setup3DCube(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
     const MAX_INSTANCES = 10000;
 
-    // 1. Define the 3D Cube Geometry (8 corners, 36 indices)
-    const cubeVertices = new Float32Array([
-        -0.5, -0.5,  0.5,   0.5, -0.5,  0.5,   0.5,  0.5,  0.5,  -0.5,  0.5,  0.5, // Front
-        -0.5, -0.5, -0.5,   0.5, -0.5, -0.5,   0.5,  0.5, -0.5,  -0.5,  0.5, -0.5  // Back
-    ]);
+    const mainPass = engine.createPass({
+        name: '3d Cube Main Pass',
+        isMainScreenPass: true
+    });
 
-    const cubeIndices = new Uint16Array([
-        0, 1, 2, 2, 3, 0, // Front
-        1, 5, 6, 6, 2, 1, // Right
-        7, 6, 5, 5, 4, 7, // Back
-        4, 0, 3, 3, 7, 4, // Left
-        3, 2, 6, 6, 7, 3, // Top
-        4, 5, 1, 1, 0, 4  // Bottom
-    ]);
 
-    // 2. Upload Geometry to GPU via the new BufferManager
-    const vbo = engine.bufferManager.createVertexBuffer(cubeVertices);
-    const ibo = engine.bufferManager.createIndexBuffer(cubeIndices);
+    const cubeGeom=Primitives.createCube(PositionOnlyLayout,1.0,1.0,1.0)
+   cubeGeom.upload(engine)
 
     // 3. The 3D Shader
     const shaderSource = `
@@ -60,18 +51,15 @@ export async function setup3DCube(engine: NullGraph, camera: Camera, getUiState:
     `;
 
     // 4. FIX: Save the created batch to a variable
-    const cubeBatch = engine.createBatch({
+    const cubeBatch = engine.createBatch(mainPass,{
         shaderCode: shaderSource,
         strideFloats: 14,
         maxInstances: MAX_INSTANCES,
-        vertexLayouts: [{
-            arrayStride: 3 * 4,
-            attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }]
-        }]
+        vertexLayouts: cubeGeom.layout.getWebGPUDescriptor()
     });
 
     // 5. FIX: Assign the geometry to the specific batch
-    engine.setBatchGeometry(cubeBatch, vbo, ibo, cubeIndices.length);
+    engine.setBatchGeometry(cubeBatch, cubeGeom.vertexBuffer!, cubeGeom.indexBuffer!,cubeGeom.indices.length);
 
     // 6. Setup ECS Data
     const data = new Float32Array(MAX_INSTANCES * 14);
@@ -104,7 +92,7 @@ export async function setup3DCube(engine: NullGraph, camera: Camera, getUiState:
             engine.updateBatchData(cubeBatch, data, MAX_INSTANCES);
         },
         destroy: () => {
-            engine.clearBatches();
+            engine.clearPasses();
             console.log("Cleaning up 3D Demo");
         }
     };

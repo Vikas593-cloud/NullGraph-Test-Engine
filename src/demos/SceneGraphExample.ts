@@ -1,5 +1,6 @@
 // demos/SceneGraphExample.ts
 import { NullGraph, Camera } from 'null-graph';
+import {cubeIndices, cubeVertices, quadIndices, quadVertices} from "../data";
 
 class SceneNode {
     // NEW: We tag the node so we know which batch it belongs to!
@@ -73,46 +74,14 @@ class SceneNode {
 export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
 
 
-    const cubeVertices = new Float32Array([
-        // Front face (Looking +Z)
-        -0.5, -0.5,  0.5,   0, 0, 1,    0.5, -0.5,  0.5,   0, 0, 1,
-        0.5,  0.5,  0.5,   0, 0, 1,   -0.5,  0.5,  0.5,   0, 0, 1,
-        // Back face (Looking -Z)
-        0.5, -0.5, -0.5,   0, 0, -1,  -0.5, -0.5, -0.5,   0, 0, -1,
-        -0.5,  0.5, -0.5,   0, 0, -1,   0.5,  0.5, -0.5,   0, 0, -1,
-        // Right face (Looking +X)
-        0.5, -0.5,  0.5,   1, 0, 0,    0.5, -0.5, -0.5,   1, 0, 0,
-        0.5,  0.5, -0.5,   1, 0, 0,    0.5,  0.5,  0.5,   1, 0, 0,
-        // Left face (Looking -X)
-        -0.5, -0.5, -0.5,  -1, 0, 0,   -0.5, -0.5,  0.5,  -1, 0, 0,
-        -0.5,  0.5,  0.5,  -1, 0, 0,   -0.5,  0.5, -0.5,  -1, 0, 0,
-        // Top face (Looking +Y)
-        -0.5,  0.5,  0.5,   0, 1, 0,    0.5,  0.5,  0.5,   0, 1, 0,
-        0.5,  0.5, -0.5,   0, 1, 0,   -0.5,  0.5, -0.5,   0, 1, 0,
-        // Bottom face (Looking -Y)
-        -0.5, -0.5, -0.5,   0, -1, 0,   0.5, -0.5, -0.5,   0, -1, 0,
-        0.5, -0.5,  0.5,   0, -1, 0,   -0.5, -0.5,  0.5,   0, -1, 0,
-    ]);
-    const cubeIndices = new Uint16Array([
-        0, 1, 2, 2, 3, 0,       // Front
-        4, 5, 6, 6, 7, 4,       // Back
-        8, 9, 10, 10, 11, 8,    // Right
-        12, 13, 14, 14, 15, 12, // Left
-        16, 17, 18, 18, 19, 16, // Top
-        20, 21, 22, 22, 23, 20  // Bottom
-    ]);
-
-    const quadVertices = new Float32Array([
-        // Flat diamond shape for moons
-        -0.5, 0.0,  0.0,   0, 1, 0,    0.0, 0.0,  0.5,   0, 1, 0,
-        0.5, 0.0,  0.0,   0, 1, 0,    0.0, 0.0, -0.5,   0, 1, 0,
-    ]);
-    const quadIndices = new Uint16Array([0, 1, 2, 2, 3, 0]);
-
     const cubeVBO = engine.bufferManager.createVertexBuffer(cubeVertices);
     const cubeIBO = engine.bufferManager.createIndexBuffer(cubeIndices);
     const quadVBO = engine.bufferManager.createVertexBuffer(quadVertices);
     const quadIBO = engine.bufferManager.createIndexBuffer(quadIndices);
+    const mainPass = engine.createPass({
+        name: 'Scene Graph Main Pass',
+        isMainScreenPass: true
+    });
 
     // 2. THE SHADER
     const shaderSource = `
@@ -163,10 +132,10 @@ export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiSt
         }]
     };
 
-    const planetBatch = engine.createBatch(pipelineConfig);
+    const planetBatch = engine.createBatch(mainPass,pipelineConfig);
     engine.setBatchGeometry(planetBatch, cubeVBO, cubeIBO, cubeIndices.length);
 
-    const moonBatch = engine.createBatch(pipelineConfig);
+    const moonBatch = engine.createBatch(mainPass,pipelineConfig);
     engine.setBatchGeometry(moonBatch, quadVBO, quadIBO, quadIndices.length);
 
     // 4. BUILD THE TREE
@@ -216,7 +185,7 @@ export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiSt
             engine.updateBatchData(moonBatch, moonData, moonCtx.index);
         },
         destroy: () => {
-            engine.clearBatches();
+            engine.clearPasses();
             console.log("Cleaning up OOP Scene Graph Demo");
         }
     };

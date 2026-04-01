@@ -1,5 +1,7 @@
 // demos/AoSoAExample.ts
 import { NullGraph, Camera } from 'null-graph';
+import { octahedronIndices, octahedronVertices } from "../data";
+import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
     const MAX_INSTANCES = 10000;
@@ -19,7 +21,7 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
         };
 
         @vertex
-        fn vs_main(@builtin(vertex_index) vIdx: u32, @builtin(instance_index) iIdx: u32) -> VertexOut {
+        fn vs_main(@location(0) localPos: vec3<f32>, @builtin(instance_index) iIdx: u32) -> VertexOut {
             let CHUNK_SIZE = 16u;
             let CHUNK_FLOATS = 224u; // 16 * 14
             
@@ -44,8 +46,7 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
             let cb = ecs[chunkBase + (13u * CHUNK_SIZE) + localIdx];
             let color = vec3<f32>(cr, cg, cb);
 
-            var tri = array<vec2<f32>, 3>(vec2(0.0, 0.5), vec2(-0.5, -0.5), vec2(0.5, -0.5));
-            let worldPos = (vec3<f32>(tri[vIdx], 0.0) * scale) + pos;
+            let worldPos = (localPos * scale) + pos;
 
             var out: VertexOut;
             out.pos = camera.viewProj * vec4<f32>(worldPos, 1.0);
@@ -59,13 +60,23 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
         }
     `;
 
-    const triangleBatch=engine.createBatch({
+    // 1. NEW: Create a Render Pass first
+    const mainPass = engine.createPass({
+        name: 'AoSoA Main Pass',
+        isMainScreenPass: true
+    });
+    const octaHedronGeom=Primitives.createOctahedron(StandardLayout,1.0,1.0,1.0)
+    octaHedronGeom.upload(engine)
+
+    // 2. MODIFIED: Pass the 'mainPass' to createBatch
+    const octahedronBatch = engine.createBatch(mainPass, {
         shaderCode: shaderSource,
         strideFloats: STRIDE,
-        maxInstances: MAX_INSTANCES
+        maxInstances: MAX_INSTANCES,
+        vertexLayouts:octaHedronGeom.layout.getWebGPUDescriptor()
     });
 
-    // 2. Generate Chunked Data
+    // 3. Generate Chunked Data
     const totalFloats = MAX_INSTANCES * STRIDE;
     const data = new Float32Array(totalFloats);
     const originalYPositions = new Float32Array(MAX_INSTANCES);
@@ -100,7 +111,8 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
         }
     }
 
-    engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
+    engine.setBatchGeometry(octahedronBatch, octaHedronGeom.vertexBuffer!, octaHedronGeom.indexBuffer!, octaHedronGeom.indices.length);
+    engine.updateBatchData(octahedronBatch, data, MAX_INSTANCES);
 
     return {
         update: (simTime: number) => {
@@ -123,10 +135,11 @@ export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: 
                     data[pyOffset + i] = originalYPositions[globalIdx] + waveOffset;
                 }
             }
-            engine.updateBatchData(triangleBatch,data, MAX_INSTANCES);
+            engine.updateBatchData(octahedronBatch, data, MAX_INSTANCES);
         },
         destroy: () => {
-            engine.clearBatches();
+            // 4. MODIFIED: Use clearPasses instead of clearBatches
+            engine.clearPasses();
             console.log("Cleaning up AoSoA Demo");
         }
     };

@@ -1,42 +1,17 @@
 // demos/Geometry3DExample.ts
 import { NullGraph, Camera } from 'null-graph';
+import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setup3DCubeWithAmbientLight(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
     const MAX_INSTANCES = 10000;
 
-    // 1. Geometry with Normals: [X, Y, Z,  NormalX, NormalY, NormalZ]
-    const cubeVertices = new Float32Array([
-        // Front face (Looking +Z)
-        -0.5, -0.5,  0.5,   0, 0, 1,    0.5, -0.5,  0.5,   0, 0, 1,
-        0.5,  0.5,  0.5,   0, 0, 1,   -0.5,  0.5,  0.5,   0, 0, 1,
-        // Back face (Looking -Z)
-        0.5, -0.5, -0.5,   0, 0, -1,  -0.5, -0.5, -0.5,   0, 0, -1,
-        -0.5,  0.5, -0.5,   0, 0, -1,   0.5,  0.5, -0.5,   0, 0, -1,
-        // Right face (Looking +X)
-        0.5, -0.5,  0.5,   1, 0, 0,    0.5, -0.5, -0.5,   1, 0, 0,
-        0.5,  0.5, -0.5,   1, 0, 0,    0.5,  0.5,  0.5,   1, 0, 0,
-        // Left face (Looking -X)
-        -0.5, -0.5, -0.5,  -1, 0, 0,   -0.5, -0.5,  0.5,  -1, 0, 0,
-        -0.5,  0.5,  0.5,  -1, 0, 0,   -0.5,  0.5, -0.5,  -1, 0, 0,
-        // Top face (Looking +Y)
-        -0.5,  0.5,  0.5,   0, 1, 0,    0.5,  0.5,  0.5,   0, 1, 0,
-        0.5,  0.5, -0.5,   0, 1, 0,   -0.5,  0.5, -0.5,   0, 1, 0,
-        // Bottom face (Looking -Y)
-        -0.5, -0.5, -0.5,   0, -1, 0,   0.5, -0.5, -0.5,   0, -1, 0,
-        0.5, -0.5,  0.5,   0, -1, 0,   -0.5, -0.5,  0.5,   0, -1, 0,
-    ]);
 
-    const cubeIndices = new Uint16Array([
-        0, 1, 2, 2, 3, 0,       // Front
-        4, 5, 6, 6, 7, 4,       // Back
-        8, 9, 10, 10, 11, 8,    // Right
-        12, 13, 14, 14, 15, 12, // Left
-        16, 17, 18, 18, 19, 16, // Top
-        20, 21, 22, 22, 23, 20  // Bottom
-    ]);
-
-    const vbo = engine.bufferManager.createVertexBuffer(cubeVertices);
-    const ibo = engine.bufferManager.createIndexBuffer(cubeIndices);
+    const mainPass = engine.createPass({
+        name: '3D cube with Lighting Main Pass',
+        isMainScreenPass: true
+    });
+    const cubeGeom=Primitives.createCube(StandardLayout,1.0,1.0,1.0)
+    cubeGeom.upload(engine)
 
 
     // 2. The Lighting Shader
@@ -91,19 +66,13 @@ export async function setup3DCubeWithAmbientLight(engine: NullGraph, camera: Cam
     `;
 
     // 3. Tell the Pipeline about the new Normals!
-    const cubeBatch=engine.createBatch({
+    const cubeBatch=engine.createBatch(mainPass,{
         shaderCode: shaderSource,
         strideFloats: 14,
         maxInstances: MAX_INSTANCES,
-        vertexLayouts: [{
-            arrayStride: 6 * 4, // Now 6 floats (X,Y,Z, NX,NY,NZ) * 4 bytes = 24 bytes
-            attributes: [
-                { shaderLocation: 0, offset: 0, format: 'float32x3' },      // Positions
-                { shaderLocation: 1, offset: 3 * 4, format: 'float32x3' }   // Normals start 12 bytes in
-            ]
-        }]
+        vertexLayouts: cubeGeom.layout.getWebGPUDescriptor()
     });
-    engine.setBatchGeometry(cubeBatch,vbo, ibo, cubeIndices.length);
+    engine.setBatchGeometry(cubeBatch,cubeGeom.vertexBuffer!, cubeGeom.indexBuffer!, cubeGeom.indices.length);
     // ... [Keep your ECS data generation exactly the same!] ...
     const data = new Float32Array(MAX_INSTANCES * 14);
     const originalYPositions = new Float32Array(MAX_INSTANCES);
@@ -132,7 +101,7 @@ export async function setup3DCubeWithAmbientLight(engine: NullGraph, camera: Cam
             engine.updateBatchData(cubeBatch,data, MAX_INSTANCES);
         },
         destroy: () => {
-            engine.clearBatches();
+            engine.clearPasses();
         }
     };
 }

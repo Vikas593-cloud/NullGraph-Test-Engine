@@ -12,6 +12,15 @@ import {setup3DCube} from "./demos/3DGeometryExample";
 import {setup3DCubeWithAmbientLight} from "./demos/3DGeometryWithLighting";
 import {setupSpaceFleet} from "./demos/SpaceFleetExample";
 import {setupFireworks} from "./demos/FireWorksExample";
+import {setupGPUCulling} from "./demos/GPUCullingExample";
+import {setupGPULOD} from "./demos/GPULodExample";
+import {setupMegabuffer} from "./demos/MegaBufferExample";
+import {setupForwardLightingCyberPunk2077} from "./demos/ForwardLightingCyberPunk2077";
+import {setupPostProcessing} from "./demos/PostProcessing";
+import {setupCRTEffect} from "./demos/CRTEffect";
+import {setupBloomEffect} from "./demos/BloomEffectExample";
+import {setupHologramEffect} from "./demos/HologramEffectExample";
+import {setupSynthwaveCRT} from "./demos/SynthwaveCRTExample";
 
 // Global UI State
 let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
@@ -27,6 +36,8 @@ async function main() {
     const engine = new NullGraph();
     await engine.init(canvas);
     const camera = new Camera(75, canvas.width / canvas.height, 0.1, 1000.0);
+    let activeCameraUpdate: ((cam: Camera, time: number, ctrl: any) => void) | null = null;
+
 
     // Dynamic Demo State
     let activeUpdateLoop: ((simTime: number) => void) | null = null;
@@ -75,6 +86,54 @@ async function main() {
             activeUpdateLoop = demo.update;
             activeDestroyFunc = demo.destroy;
         }
+        else if (demoId === 'demo-gpu-culling') {
+            const demo = await setupGPUCulling(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-gpu-lod') {
+            const demo = await setupGPULOD(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-mega-buffer') {
+            const demo = await setupMegabuffer(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+           // activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-forward+-lighting') {
+            const demo = await setupForwardLightingCyberPunk2077(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-post-processing') {
+            const demo = await setupPostProcessing(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-crt-effect') {
+            const demo = await setupCRTEffect(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-bloom-effect') {
+            const demo = await setupBloomEffect(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+
+        else if (demoId === 'demo-hologram-effect') {
+            const demo = await setupHologramEffect(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-synthwave-crt-effect') {
+            const demo = await setupSynthwaveCRT(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+        }
+
         // ... add anim-cpu and anim-gpu here later
     };
 
@@ -114,10 +173,16 @@ async function main() {
         }
 
 
-        camera.updateView(
-            [Math.sin(simTime) * camControl.radius, 30, Math.cos(simTime) * camControl.radius],
-            [0, 0, 0]
-        );
+        if (activeCameraUpdate) {
+            // Use the Demo's custom camera path
+            activeCameraUpdate(camera, simTime, camControl);
+        } else {
+            // DEFAULT FALLBACK: The original orbit for simple demos
+            camera.updateView(
+                [Math.sin(simTime) * camControl.radius, 30, Math.cos(simTime) * camControl.radius],
+                [0, 0, 0]
+            );
+        }
         engine.updateCamera(camera);
         engine.render();
 
@@ -125,7 +190,7 @@ async function main() {
     }
 
     // Load default demo and start loop
-    await loadDemo('demo-aos');
+    await loadDemo('demo-3d-cube-ambient-light');
     frame();
 }
 
