@@ -24,6 +24,14 @@ import {setupSynthwaveCRT} from "./demos/SynthwaveCRTExample";
 import {setupQuantumCoreDemo} from "./demos/WebGPUExperiments/QuantumCore";
 import {setupSingularity} from "./demos/WebGPUExperiments/Singularity";
 import {setupAetherialFlow} from "./demos/WebGPUExperiments/AetherialFlow";
+import {setupGyroidResonance} from "./demos/WebGPUExperiments/GyroidResonance";
+import {setupAizawaCanvas} from "./demos/WebGPUExperiments/AizawaCanvas";
+import {setupIridescentLeviathan} from "./demos/WebGPUExperiments/IridescentLeviathan";
+import {setupHyperchaoticResonance} from "./demos/WebGPUExperiments/HyperchaoticResonance";
+import {setupLabyrinthChaos} from "./demos/WebGPUExperiments/LabyrinthChaos";
+import {setupEtherealGyroid} from "./demos/WebGPUExperiments/EtherealGyroid";
+import {setupStellaratorFlux} from "./demos/WebGPUExperiments/StellaratorFlux";
+import {setupHopfFibration} from "./demos/WebGPUExperiments/HopfFibration";
 
 // Global UI State
 let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
@@ -151,6 +159,54 @@ async function main() {
         }
         else if (demoId === 'demo-aetherial-flow') {
             const demo = await setupAetherialFlow(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-gyroid-resonance') {
+            const demo = await setupGyroidResonance(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-aizawa-canvas') {
+            const demo = await setupAizawaCanvas(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-iridescent-leviathan') {
+            const demo = await setupIridescentLeviathan(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-hyperchaotic-resonance') {
+            const demo = await setupHyperchaoticResonance(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-labyrinth-chaos') {
+            const demo = await setupLabyrinthChaos(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-ethereal-gyroid') {
+            const demo = await setupEtherealGyroid(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-stellarator-flux') {
+            const demo = await setupStellaratorFlux(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-hopffibration') {
+            const demo = await setupHopfFibration(engine, camera, getState);
             activeUpdateLoop = demo.update;
             activeDestroyFunc = demo.destroy;
             activeCameraUpdate = demo.cameraUpdate || null;
