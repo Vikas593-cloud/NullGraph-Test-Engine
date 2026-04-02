@@ -21,6 +21,9 @@ import {setupCRTEffect} from "./demos/CRTEffect";
 import {setupBloomEffect} from "./demos/BloomEffectExample";
 import {setupHologramEffect} from "./demos/HologramEffectExample";
 import {setupSynthwaveCRT} from "./demos/SynthwaveCRTExample";
+import {setupQuantumCoreDemo} from "./demos/WebGPUExperiments/QuantumCore";
+import {setupSingularity} from "./demos/WebGPUExperiments/Singularity";
+import {setupAetherialFlow} from "./demos/WebGPUExperiments/AetherialFlow";
 
 // Global UI State
 let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
@@ -46,6 +49,7 @@ async function main() {
     // Switch Demos based on UI clicks
     const loadDemo = async (demoId: string) => {
         if (activeDestroyFunc) activeDestroyFunc(); // Clean up old demo
+        activeCameraUpdate = null;
         const getState = () => uiState;
         if (demoId === 'demo-aos') {
             const demo = await setupAoS(engine, camera, getState);
@@ -132,6 +136,24 @@ async function main() {
             const demo = await setupSynthwaveCRT(engine, camera, getState);
             activeUpdateLoop = demo.update;
             activeDestroyFunc = demo.destroy;
+        }
+        else if (demoId === 'demo-quantumcore') {
+            const demo = await setupQuantumCoreDemo(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-singularity') {
+            const demo = await setupSingularity(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-aetherial-flow') {
+            const demo = await setupAetherialFlow(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
         }
 
         // ... add anim-cpu and anim-gpu here later
