@@ -1,15 +1,17 @@
-// demos/WebGPUExperiments/AetherialFlow/index.ts
+// demos/WebGPUExperiments/QuantumNebula/index.ts
 import { NullGraph, Camera } from 'null-graph';
-import { aetherComputeShader, aetherRenderShader } from "./shaders";
-import { bokehBloomPostProcessShader } from "./postProcessShaders";
+import { nebulaComputeShader, nebulaRenderShader } from "./shaders";
+import { hologramPostProcessShader } from "./postProcessShaders";
 import { UIState } from "../../../types";
-import {Primitives, StandardLayout} from "null-graph/geometry";
+import { Primitives, StandardLayout } from "null-graph/geometry";
 
-export async function setupAetherialFlow(engine: NullGraph, camera: Camera, getState: () => UIState) {
-    const MAX_INSTANCES = 150000; // Push it higher! The GPU can handle it.
+export async function setupQuantumNebula(engine: NullGraph, camera: Camera, getState: () => UIState) {
+    const MAX_INSTANCES = 200000; // Let's push it even higher!
     const STRIDE = 14;
-    const pyramidGeom=Primitives.createPyramid(StandardLayout,1.0,1.0,1.0)
-    pyramidGeom.upload(engine)
+
+    // Using cubes for the particles
+    const cubeGeom = Primitives.createCube(StandardLayout, 2, 2, 2);
+    cubeGeom.upload(engine);
 
     // --- 1. RENDER TARGETS ---
     const offscreenTexture = engine.device.createTexture({
@@ -31,11 +33,11 @@ export async function setupAetherialFlow(engine: NullGraph, camera: Camera, getS
 
     // --- 2. MAIN SCENE PASS ---
     const scenePass = engine.createPass({
-        name: 'Aetherial Main Pass',
+        name: 'Nebula Main Pass',
         isMainScreenPass: false,
         colorAttachments: [{
             view: offscreenTexture.createView(),
-            clearValue: { r: 0.001, g: 0.005, b: 0.015, a: 1.0 }, // Deep midnight blue
+            clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, // Pure black for additive blending
             loadOp: 'clear', storeOp: 'store'
         }],
         depthStencilAttachment: {
@@ -44,34 +46,43 @@ export async function setupAetherialFlow(engine: NullGraph, camera: Camera, getS
         }
     });
 
+    // --- NEW BATCH API IN ACTION ---
     const physicsBatch = engine.createBatch(scenePass, {
         isIndirect: true,
-        computeShaderCode: aetherComputeShader,
-        shaderCode: aetherRenderShader,
+        computeShaderCode: nebulaComputeShader,
+        shaderCode: nebulaRenderShader,
         strideFloats: STRIDE,
         maxInstances: MAX_INSTANCES,
         targetFormat: 'rgba16float',
-        vertexLayouts: pyramidGeom.layout.getWebGPUDescriptor()
+        vertexLayouts: cubeGeom.layout.getWebGPUDescriptor(),
+
+        // ADDITIVE BLENDING: Colors sum together, creating intense glowing cores
+        blend: {
+            color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+            alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }
+        },
+        depthWriteEnabled: false,
+        depthCompare: 'less'
     });
 
-    const initialDrawArgs = new Uint32Array([pyramidGeom.indices.length, 0, 0, 0, 0]);
+    const initialDrawArgs = new Uint32Array([cubeGeom.indices.length, 0, 0, 0, 0]);
     engine.device.queue.writeBuffer(physicsBatch.indirectBuffer!, 0, initialDrawArgs);
 
     engine.setBatchGeometry(
         physicsBatch,
-        pyramidGeom.vertexBuffer!,
-        pyramidGeom.indexBuffer!,
-        pyramidGeom.indices.length
+        cubeGeom.vertexBuffer!,
+        cubeGeom.indexBuffer!,
+        cubeGeom.indices.length
     );
 
-    // --- 3. POST PROCESS PASS (BOKEH & BLOOM) ---
+    // --- 3. POST PROCESS PASS (HOLOGRAM / CHROMATIC ABERRATION) ---
     const postPass = engine.createPass({
-        name: 'Aetherial Post Process',
+        name: 'Nebula Post Process',
         isMainScreenPass: true
     });
 
     const postBatch = engine.createBatch(postPass, {
-        shaderCode: bokehBloomPostProcessShader,
+        shaderCode: hologramPostProcessShader,
         strideFloats: 1, maxInstances: 1
     });
 
@@ -82,58 +93,43 @@ export async function setupAetherialFlow(engine: NullGraph, camera: Camera, getS
     for (let i = 0; i < MAX_INSTANCES; i++) {
         const base = i * STRIDE;
 
-        // Spawn particles in a chaotic noise cloud rather than a perfect sphere
-        const x = (Math.random() - 0.5) * 100;
-        const y = (Math.random() - 0.5) * 100;
-        const z = (Math.random() - 0.5) * 100;
+        // Spawn particles in a wide disk (galaxy shape)
+        const radius = Math.random() * 500 + 10;
+        const angle = Math.random() * Math.PI * 2;
 
-        initialData[base + 1] = x;
-        initialData[base + 2] = y;
-        initialData[base + 3] = z;
+        initialData[base + 1] = Math.cos(angle) * radius; // x
+        initialData[base + 2] = (Math.random() - 0.5) * 10; // y (thin disk)
+        initialData[base + 3] = Math.sin(angle) * radius; // z
 
-        // Initial Velocity
-        initialData[base + 4] = 0;
+        // Initial Velocity (orbiting)
+        initialData[base + 4] = -Math.sin(angle) * 50;
         initialData[base + 5] = 0;
-        initialData[base + 6] = 0;
+        initialData[base + 6] = Math.cos(angle) * 50;
     }
 
     engine.updateBatchData(physicsBatch, initialData, MAX_INSTANCES);
     const postProcessTimeData = new Float32Array([0]);
 
-    // --- MOUSE TRACKING HACK ---
-    let mouseX = 0;
-    let mouseY = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-        // Normalize mouse coordinates to -1.0 to 1.0 (WebGPU clip space)
-        mouseX = (e.clientX / window.innerWidth) * 2.0 - 1.0;
-        mouseY = -(e.clientY / window.innerHeight) * 2.0 + 1.0; // Invert Y for 3D math
-    };
-    window.addEventListener('mousemove', onMouseMove);
-
     return {
         update: (simTime: number) => {
             camera.bufferData[19] = simTime;
-
-            // HIJACKING UNUSED BYTES: The compute shader doesn't actually use
-            // the camera's eye position, so we overwrite eye.x and eye.y with mouse data!
-            camera.bufferData[16] = mouseX;
-            camera.bufferData[17] = mouseY;
-
             postProcessTimeData[0] = simTime;
             engine.updateBatchData(postBatch, postProcessTimeData, 1);
+
+            // Note: If your compute shader uses atomicAdd for instance counts,
+            // you might need to clear the indirect buffer instance count here
+            // depending on how null-graph handles per-frame indirect resets!
         },
         cameraUpdate: (cam: Camera, time: number) => {
-            // Let's slow down the camera sweep slightly so the mouse interaction feels better
+            // Sweeping galaxy view
             const eye: [number, number, number] = [
-                Math.sin(time * 0.02) * 180,
-                30 + Math.cos(time * 0.03) * 20,
-                Math.cos(time * 0.02) * 180
+                Math.sin(time * 0.1) * 250,
+                150 + Math.sin(time * 0.05) * 50,
+                Math.cos(time * 0.1) * 250
             ];
             cam.updateView(eye, [0, 0, 0]);
         },
         destroy: () => {
-            window.removeEventListener('mousemove', onMouseMove); // Clean up!
             camera.bufferData[19] = 0.0;
             offscreenTexture.destroy();
             offscreenDepth.destroy();

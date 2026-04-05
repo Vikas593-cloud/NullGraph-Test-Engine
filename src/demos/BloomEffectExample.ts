@@ -1,7 +1,6 @@
 // demos/BloomEffectExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import { cubeIndices, cubeVerticesWithUV } from "../data";
-import {UIState} from "../ui";
+import {UIState} from "../types";
 import {PositionOnlyLayout, Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupBloomEffect(engine: NullGraph, camera: Camera, getState: () => UIState) {

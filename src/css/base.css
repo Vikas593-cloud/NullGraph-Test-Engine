@@ -1,0 +1,41 @@
+/* --- CSS Reset & Variables --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --sidebar-width: 300px;
+    --right-panel-width: 360px;
+    --transition-speed: 0.4s;
+    --accent-color: #00ffcc;
+    --bg-dark: rgba(12, 12, 16, 0.85);
+    --border-light: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 250px;
+        --right-panel-width: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 280px;
+        --right-panel-width: calc(100% - 60px);;
+    }
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    background-color: #000;
+}
+
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }

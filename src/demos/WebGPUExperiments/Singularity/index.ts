@@ -1,10 +1,9 @@
 // demos/WebGPUExperiments/Singularity/index.ts
 import { NullGraph, Camera } from 'null-graph';
-import { pyramidIndices, pyramidVertices } from "../../../data"; // Re-using pyramid/tetrahedron
 import { singularityComputeShader, singularityRenderShader } from "./shaders";
-// We will reuse the awesome god ray shader from Quantum Core!
 import { godRaysPostProcessShader } from "../QuantumCore/shaders";
-import {UIState} from "../../../ui";
+import {UIState} from "../../../types";
+import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupSingularity(engine: NullGraph, camera: Camera, getState: () => UIState) {
     const MAX_INSTANCES = 100000;
@@ -55,15 +54,17 @@ export async function setupSingularity(engine: NullGraph, camera: Camera, getSta
         }]
     });
 
+    const pyramidGeom=Primitives.createPyramid(StandardLayout,1.0,1.0,1.0)
+    pyramidGeom.upload(engine)
     // Seed Indirect Buffer with index count
-    const initialDrawArgs = new Uint32Array([pyramidIndices.length, 0, 0, 0, 0]);
+    const initialDrawArgs = new Uint32Array([pyramidGeom.indices.length, 0, 0, 0, 0]);
     engine.device.queue.writeBuffer(physicsBatch.indirectBuffer!, 0, initialDrawArgs);
 
     engine.setBatchGeometry(
         physicsBatch,
-        engine.bufferManager.createVertexBuffer(pyramidVertices),
-        engine.bufferManager.createIndexBuffer(pyramidIndices),
-        pyramidIndices.length
+        pyramidGeom.vertexBuffer!,
+        pyramidGeom.indexBuffer!,
+        pyramidGeom.indices.length
     );
 
     // --- 4. POST PROCESS PASS ---

@@ -1,0 +1,98 @@
+/* --- Documentation Overlay --- */
+#doc-overlay {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width) - var(--right-panel-width));
+    height: 100vh;
+    background: rgba(12, 12, 15, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 50;
+    padding: 60px;
+    color: #fff;
+    overflow-y: auto;
+    transition: left var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    width var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 0.3s ease;
+}
+
+#doc-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Document State Shifts based on body classes */
+body.left-collapsed #doc-overlay {
+    left: 0;
+    width: calc(100vw - var(--right-panel-width));
+}
+
+body.right-collapsed #doc-overlay {
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width));
+}
+
+body.left-collapsed.right-collapsed #doc-overlay {
+    left: 0;
+    width: 100vw;
+}
+
+.doc-content h1 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 15px;
+    font-weight: 700;
+}
+
+.doc-content p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #ccc;
+    max-width: 800px;
+}
+
+#close-docs {
+    position: absolute;
+    top: 40px;
+    right: 50px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-light);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 60;
+}
+
+#close-docs:hover {
+    background: rgba(255, 50, 50, 0.2);
+    border-color: rgba(255, 50, 50, 0.5);
+    color: #ff4444;
+    transform: scale(1.1);
+}
+
+@media (max-width: 1024px) {
+    #doc-overlay { padding: 40px; }
+    #close-docs { top: 30px; right: 30px; }
+}
+
+@media (max-width: 768px) {
+    #doc-overlay {
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 500;
+        padding: 80px 20px;
+    }
+    #close-docs {
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.5);
+    }
+}

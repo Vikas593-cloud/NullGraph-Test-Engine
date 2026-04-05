@@ -1,0 +1,44 @@
+/* --- Dashboard / FPS Counter --- */
+#dashboard {
+    position: fixed;
+    top: 24px;
+    right: calc(var(--right-panel-width) + 24px);
+    z-index: 100;
+    background: rgba(15, 15, 20, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: right var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body.right-collapsed #dashboard {
+    right: 24px;
+}
+
+.neon {
+    color: var(--accent-color);
+    text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+    font-family: monospace;
+    font-size: 1.1rem;
+    margin-left: 8px;
+    min-width: 3ch;
+    display: inline-block;
+    text-align: right;
+}
+
+@media (max-width: 768px) {
+    #dashboard {
+        top: 15px;
+        right: 15px;
+        font-size: 0.7rem;
+        padding: 5px 12px;
+    }
+}

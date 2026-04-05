@@ -1,9 +1,9 @@
 // demos/WebGPUExperiments/HopfFibration/index.ts
 import { NullGraph, Camera } from 'null-graph';
-import { pyramidIndices, pyramidVertices } from "../../../data";
 import { hopfComputeShader, hopfRenderShader } from "./shaders";
 import { anamorphicPostProcessShader } from "./postProcessShaders";
-import { UIState } from "../../../ui";
+import { UIState } from "../../../types";
+import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupHopfFibration(engine: NullGraph, camera: Camera, getState: () => UIState) {
     const MAX_INSTANCES = 150000;
@@ -51,15 +51,17 @@ export async function setupHopfFibration(engine: NullGraph, camera: Camera, getS
             arrayStride: 24, attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }]
         }]
     });
+    const pyramidGeom=Primitives.createPyramid(StandardLayout,1.0,1.0,1.0)
+    pyramidGeom.upload(engine)
 
-    const initialDrawArgs = new Uint32Array([pyramidIndices.length, 0, 0, 0, 0]);
+    const initialDrawArgs = new Uint32Array([pyramidGeom.indices.length, 0, 0, 0, 0]);
     engine.device.queue.writeBuffer(mathBatch.indirectBuffer!, 0, initialDrawArgs);
 
     engine.setBatchGeometry(
         mathBatch,
-        engine.bufferManager.createVertexBuffer(pyramidVertices),
-        engine.bufferManager.createIndexBuffer(pyramidIndices),
-        pyramidIndices.length
+        pyramidGeom.vertexBuffer!,
+       pyramidGeom.indexBuffer!,
+        pyramidGeom.indices.length
     );
 
     const postPass = engine.createPass({

@@ -1,6 +1,5 @@
 // demos/GPUCullingExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import {cubeIndices, cubeVertices} from "../data";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupGPUCulling(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
@@ -101,10 +100,10 @@ export async function setupGPUCulling(engine: NullGraph, camera: Camera, getUiSt
     });
 
     // WebGPU requires us to seed the indirect buffer with the index count initially
-    const initialDrawArgs = new Uint32Array([cubeIndices.length, 0, 0, 0, 0]);
+    const initialDrawArgs = new Uint32Array([cubeGeom.indices.length, 0, 0, 0, 0]);
     engine.device.queue.writeBuffer(cullingBatch.indirectBuffer!, 0, initialDrawArgs);
 
-    engine.setBatchGeometry(cullingBatch, cubeGeom.vertexBuffer!, cubeGeom.indexBuffer!, cubeIndices.length);
+    engine.setBatchGeometry(cullingBatch, cubeGeom.vertexBuffer!, cubeGeom.indexBuffer!, cubeGeom.indices.length);
 
     // 5. Generate Initial ECS Data
     const data = new Float32Array(MAX_INSTANCES * 14);

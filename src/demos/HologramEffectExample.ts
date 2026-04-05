@@ -1,7 +1,7 @@
 // demos/HologramEffectExample.ts
 import { NullGraph, Camera } from 'null-graph';
 import { pyramidIndices, pyramidVertices } from "../data";
-import { UIState } from "../ui";
+import { UIState } from "../types";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupHologramEffect(engine: NullGraph, camera: Camera, getState: () => UIState) {

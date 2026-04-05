@@ -1,9 +1,8 @@
 import gsap from 'gsap';
+import {DEMO_DATA, UIState} from "./types";
 
-export interface UIState {
-    timeScale: number;
-    amplitude: number;
-}
+
+
 
 export function initUI(
     onStateChange: (state: UIState) => void,
@@ -33,6 +32,8 @@ export function initUI(
         controlPanel?.classList.toggle('collapsed');
         document.body.classList.toggle('right-collapsed');
     });
+
+
 
     // Auto-collapse on mobile load
     if (isMobile()) {
@@ -81,6 +82,58 @@ export function initUI(
         navItems.forEach(nav => nav.classList.remove('active'));
     });
 
+    function updateRightPanelInfo(demoId: string) {
+        const container = document.getElementById('demo-info-container');
+        const titleEl = document.getElementById('info-title');
+        const conceptsEl = document.getElementById('info-concepts');
+        const sectionsWrapper = document.getElementById('info-sections-wrapper');
+
+        if (!container || !titleEl || !conceptsEl || !sectionsWrapper) return;
+
+        // Fallback data
+        const data = DEMO_DATA[demoId] || {
+            title: "Demo Details",
+            concepts: ["WebGPU"],
+            sections: [{ heading: "Pending", text: "Documentation is being written." }]
+        };
+
+        gsap.to(container, {
+            opacity: 0,
+            duration: 0.2,
+            onComplete: () => {
+                // Update Title and Tags
+                titleEl.innerText = data.title;
+                conceptsEl.innerHTML = data.concepts.map(c => `<span class="tag">${c}</span>`).join('');
+
+                // Generate HTML for Accordions
+                let sectionsHTML = '';
+                data.sections.forEach(sec => {
+                    const openAttr = sec.isOpen ? 'open' : '';
+                    let codeBlock = '';
+                    if (sec.code) {
+                        // Using a simple replace to escape basic HTML chars in code
+                        const safeCode = sec.code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        codeBlock = `<div class="code-wrapper"><code>${safeCode}</code></div>`;
+                    }
+
+                    sectionsHTML += `
+                        <details class="info-section" ${openAttr}>
+                            <summary>${sec.heading}</summary>
+                            <div class="section-content">
+                                <p>${sec.text}</p>
+                                ${codeBlock}
+                            </div>
+                        </details>
+                    `;
+                });
+
+                sectionsWrapper.innerHTML = sectionsHTML;
+
+                // Fade back in
+                gsap.to(container, { opacity: 1, duration: 0.2 });
+            }
+        });
+    }
     // --- Navigation Logic ---
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
@@ -94,7 +147,9 @@ export function initUI(
             }
             else if (target.dataset.demo) {
                 docOverlay?.classList.add('hidden');
-                onDemoChange(target.dataset.demo);
+                const demoId = target.dataset.demo;
+                onDemoChange(demoId);
+                updateRightPanelInfo(demoId);
             }
 
             if (isMobile()) {
@@ -127,6 +182,7 @@ export function initUI(
 
     speedSlider?.addEventListener('input', updateState);
     ampSlider?.addEventListener('input', updateState);
+
 
     return {
         updateFPS: (fps: number) => {

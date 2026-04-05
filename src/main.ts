@@ -1,9 +1,9 @@
 // main.ts
-import './style.css';
+import './main.css';
 import { NullGraph, Camera } from 'null-graph';
 import { generateDummyData } from './data';
 import gsap from 'gsap';
-import { initUI, UIState } from "./ui";
+import { initUI } from "./ui";
 import {setupSoA} from "./demos/SoAExample";
 import {setupAoS} from "./demos/AoSExample";
 import {setupSceneGraph} from "./demos/SceneGraphExample";
@@ -27,11 +27,16 @@ import {setupAetherialFlow} from "./demos/WebGPUExperiments/AetherialFlow";
 import {setupGyroidResonance} from "./demos/WebGPUExperiments/GyroidResonance";
 import {setupAizawaCanvas} from "./demos/WebGPUExperiments/AizawaCanvas";
 import {setupIridescentLeviathan} from "./demos/WebGPUExperiments/IridescentLeviathan";
-import {setupHyperchaoticResonance} from "./demos/WebGPUExperiments/HyperchaoticResonance";
 import {setupLabyrinthChaos} from "./demos/WebGPUExperiments/LabyrinthChaos";
 import {setupEtherealGyroid} from "./demos/WebGPUExperiments/EtherealGyroid";
 import {setupStellaratorFlux} from "./demos/WebGPUExperiments/StellaratorFlux";
 import {setupHopfFibration} from "./demos/WebGPUExperiments/HopfFibration";
+import {setupQuantumNebula} from "./demos/WebGPUExperiments/QuantumNebula";
+import {setupCymaticResonance} from "./demos/WebGPUExperiments/CymaticResonance";
+import {setupDeferredRendering} from "./demos/WebGPUExperiments/DeferredRendering";
+import {setupImplicitScreensaver} from "./demos/WebGPUExperiments/ImplicitScreensaver";
+import {UIState} from "./types";
+import {setupMorphogenesisAlanTuring1952} from "./demos/WebGPUExperiments/Morphogenesis-Alan-Turing-1952";
 
 // Global UI State
 let uiState: UIState = { timeScale: 0.3, amplitude: 2.0 };
@@ -181,12 +186,6 @@ async function main() {
             activeDestroyFunc = demo.destroy;
             activeCameraUpdate = demo.cameraUpdate || null;
         }
-        else if (demoId === 'demo-hyperchaotic-resonance') {
-            const demo = await setupHyperchaoticResonance(engine, camera, getState);
-            activeUpdateLoop = demo.update;
-            activeDestroyFunc = demo.destroy;
-            activeCameraUpdate = demo.cameraUpdate || null;
-        }
         else if (demoId === 'demo-labyrinth-chaos') {
             const demo = await setupLabyrinthChaos(engine, camera, getState);
             activeUpdateLoop = demo.update;
@@ -211,6 +210,37 @@ async function main() {
             activeDestroyFunc = demo.destroy;
             activeCameraUpdate = demo.cameraUpdate || null;
         }
+        else if (demoId === 'demo-quantum-nebula') {
+            const demo = await setupQuantumNebula(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-cymatic-resonance') {
+            const demo = await setupCymaticResonance(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-deferred-rendering') {
+            const demo = await setupDeferredRendering(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-implicit-screen-saver') {
+            const demo = await setupImplicitScreensaver(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+        else if (demoId === 'demo-morphogenesis-diffusion') {
+            const demo = await setupMorphogenesisAlanTuring1952(engine, camera, getState);
+            activeUpdateLoop = demo.update;
+            activeDestroyFunc = demo.destroy;
+            activeCameraUpdate = demo.cameraUpdate || null;
+        }
+
 
         // ... add anim-cpu and anim-gpu here later
     };

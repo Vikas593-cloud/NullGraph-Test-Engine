@@ -3,7 +3,7 @@ import { NullGraph, Camera } from 'null-graph';
 import { Primitives, StandardLayout } from "null-graph/geometry";
 import { quantumCoreSceneShader, godRaysPostProcessShader } from "./shaders";
 import { generateCoreData, MAX_INSTANCES, STRIDE } from "./geometry";
-import {UIState} from "../../../ui";
+import {UIState} from "../../../types";
 
 export async function setupQuantumCoreDemo(engine: NullGraph, camera: Camera, getState: () => UIState) {
 

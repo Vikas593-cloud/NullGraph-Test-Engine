@@ -1,6 +1,5 @@
 // demos/GPULodExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import {cubeIndices, cubeVertices, triIndices, triVertices} from "../data";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupGPULOD(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {

@@ -1,7 +1,7 @@
 // demos/SynthwaveCRTExample.ts
 import { NullGraph, Camera } from 'null-graph';
 import { pyramidIndices, pyramidVertices } from "../data";
-import { UIState } from "../ui";
+import { UIState } from "../types";
 
 export async function setupSynthwaveCRT(engine: NullGraph, camera: Camera, getState: () => UIState) {
     // 400 instances to create a dense 20x20 grid of "digital terrain"

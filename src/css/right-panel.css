@@ -1,0 +1,210 @@
+/* --- Right Control Panel --- */
+#control-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--right-panel-width);
+    height: 100vh;
+    background: linear-gradient(225deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.8));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border-light);
+    z-index: 90;
+    color: #fff;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+    transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+    overflow: visible;
+}
+
+#control-panel.collapsed {
+    transform: translateX(100%);
+}
+
+.right-panel-scroll-area {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 90px 24px 30px 24px;
+}
+
+#right-panel-toggle {
+    position: absolute;
+    top: 24px;
+    left: -44px;
+    width: 44px;
+    height: 44px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 8px 0 0 8px;
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    transition: transform var(--transition-speed) ease;
+}
+
+#control-panel.collapsed #right-panel-toggle svg {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+.panel-header {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.control-group { margin-bottom: 25px; }
+
+.control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.highlight {
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Demo Info Sub-Components --- */
+.panel-divider {
+    border: 0;
+    height: 1px;
+    background: var(--border-light);
+    margin: 30px 0 25px 0;
+}
+
+#demo-info-container { opacity: 1; }
+#info-title {
+    color: var(--accent-color);
+    margin-bottom: 12px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.concept-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 25px;
+}
+
+.tag {
+    background: rgba(0, 255, 204, 0.08);
+    color: var(--accent-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: 1px solid rgba(0, 255, 204, 0.2);
+}
+
+/* --- Accordion (Details/Summary) Styling --- */
+.info-section {
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.info-section summary {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #eee;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    list-style: none; /* Hides default arrow */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    transition: background 0.2s;
+}
+
+.info-section summary:hover {
+    background: rgba(0, 255, 204, 0.05);
+}
+
+/* Custom Arrow for Accordion */
+.info-section summary::after {
+    content: '▼';
+    font-size: 0.7rem;
+    color: var(--accent-color);
+    transition: transform 0.3s ease;
+}
+
+.info-section[open] summary::after {
+    transform: rotate(180deg);
+}
+
+/* Hide default webkit arrows */
+.info-section summary::-webkit-details-marker { display: none; }
+
+/* Content inside the accordion */
+.section-content {
+    padding: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+/* --- Rich Text Formatting inside Sections --- */
+.section-content p {
+    font-size: 0.85rem;
+    color: #bbb;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.section-content p:last-child {
+    margin-bottom: 0;
+}
+
+.section-content strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.code-wrapper {
+    background: rgba(5, 5, 8, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow-x: auto;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+.code-wrapper code {
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 0.75rem;
+    color: #a3b8cc;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+/* Inline code highlight */
+.section-content code:not(.code-wrapper code) {
+    background: rgba(0, 255, 204, 0.1);
+    color: var(--accent-color);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.75rem;
+}
+

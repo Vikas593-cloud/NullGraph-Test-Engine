@@ -1,7 +1,6 @@
 // demos/CRTEffectExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import { octahedronIndices, octahedronVertices } from "../data";
-import {UIState} from "../ui";
+import {UIState} from "../types";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupCRTEffect(engine: NullGraph, camera: Camera, getState: () => UIState) {

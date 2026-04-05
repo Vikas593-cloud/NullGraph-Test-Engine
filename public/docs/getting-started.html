@@ -1,0 +1,109 @@
+<div class="doc-view">
+
+
+    <h2> Quick Start</h2>
+
+    <h3>Option 1: Basic Batch Rendering</h3>
+    <p>NullGraph uses a Render Batch architecture. Define the 3D geometry once, set up your WGSL shader pipeline, and blast your ECS array to the GPU every frame.</p>
+    <pre><code class="language-typescript">import { NullGraph, Camera } from 'null-graph';
+
+async function init() {
+    const canvas = document.getElementById('gpuCanvas') as HTMLCanvasElement;
+    const engine = new NullGraph();
+    await engine.init(canvas);
+
+    // 1. Upload Static Geometry via BufferManager
+    const vbo = engine.bufferManager.createVertexBuffer(vertices);
+    const ibo = engine.bufferManager.createIndexBuffer(indices);
+
+    // 2. Create a Render Batch (Default Pass)
+    const myBatch = engine.createBatch({
+        shaderCode: `/* Your WGSL Code Here */`,
+        strideFloats: 14,
+        maxInstances: 10000,
+        vertexLayouts: [ /* WebGPU layout descriptor */ ]
+    });
+
+    engine.setBatchGeometry(myBatch, vbo, ibo, indices.length);
+
+    // 3. Generate DOD ArrayBuffer (From your ECS)
+    const MAX_INSTANCES = 10000;
+    const ecsBuffer = new Float32Array(MAX_INSTANCES * 14);
+
+    // 4. Render Loop
+    function frame() {
+        engine.updateBatchData(myBatch, ecsBuffer, MAX_INSTANCES);
+        engine.render();
+        requestAnimationFrame(frame);
+    }
+
+    frame();
+}</code></pre>
+    <p><em><strong>Note:</strong> You have to manually define vertex buffers, index buffers & indices buffers. Refer to the test-engine <a href="https://github.com/Vikas593-cloud/NullGraph-Test-Engine/blob/main/src/data.ts" target="_blank">data.ts</a> file for a reference of the above steps.</em></p>
+
+    <h3>Option 2: Using Null-Graph Geometry (Recommended)</h3>
+    <p>Instead of manually defining buffers, you can use the built-in Geometry Builder utilities for faster prototyping and cleaner code.</p>
+    <pre><code class="language-typescript">import { NullGraph, Camera } from 'null-graph';
+import { Primitives, StandardLayout } from "null-graph/geometry";
+
+async function init() {
+    const canvas = document.getElementById('gpuCanvas') as HTMLCanvasElement;
+    const engine = new NullGraph();
+    await engine.init(canvas);
+
+    // 1. Create Geometry using Primitives
+    const cubeGeom = Primitives.createCube(StandardLayout, 1.0, 1.0, 1.0);
+
+    // Uploads geometry to the engine's BufferManager
+    cubeGeom.upload(engine);
+
+    // 2. Create a Render Batch
+    const myBatch = engine.createBatch({
+        shaderCode: `/* Your WGSL Code Here */`,
+        strideFloats: 14,
+        maxInstances: 10000,
+        vertexLayouts: cubeGeom.layout.getWebGPUDescriptor()
+    });
+
+    engine.setBatchGeometry(
+        myBatch,
+        cubeGeom.vertexBuffer!,
+        cubeGeom.indexBuffer!,
+        cubeGeom.indices.length
+    );
+
+    // 3. Generate ECS Data Buffer
+    const MAX_INSTANCES = 10000;
+    const ecsBuffer = new Float32Array(MAX_INSTANCES * 14);
+
+    // 4. Render Loop
+    function frame() {
+        engine.updateBatchData(myBatch, ecsBuffer, MAX_INSTANCES);
+        engine.render();
+        requestAnimationFrame(frame);
+    }
+
+    frame();
+}</code></pre>
+
+    <hr>
+
+    <h2> Roadmap</h2>
+    <p>NullGraph is in active development for the Axion Engine.</p>
+    <ul style="list-style-type: none; padding-left: 0;">
+        <li>✅ Multi-Object Render Queue / Batching</li>
+        <li>✅ Depth / Z-Buffer Integration (Proper 3D occlusion)</li>
+        <li>✅ VBO/IBO Geometry Buffer Manager</li>
+        <li>✅ Multi-Pass Rendering & Texture Attachments</li>
+        <li>✅ GPU Compute Frustum Culling & Indirect Drawing</li>
+        <li>✅ Geometry Builder And Initiation of <code>extras</code> library to improve DX experience</li>
+        <li>⬜ PBR Textures & Material ID Injection</li>
+        <li>⬜ Raw GLTF Mesh Parsing</li>
+        <li>⬜ Directional Shadows / Cascaded Shadow Maps</li>
+    </ul>
+
+    <hr>
+
+    <h2>License</h2>
+    <p>NullGraph is released under the <strong>MIT License</strong>.</p>
+</div>

@@ -645,3 +645,78 @@ body.right-collapsed #dashboard {
         background: rgba(0, 0, 0, 0.5); /* Darker on mobile for contrast */
     }
 }
+
+/* --- Demo Info Panel Updates --- */
+.panel-divider {
+    border: 0;
+    height: 1px;
+    background: var(--border-light);
+    margin: 30px 0 25px 0;
+}
+
+#demo-info-container {
+    opacity: 1; /* Handled by GSAP later */
+}
+
+#info-title {
+    color: var(--accent-color);
+    margin-bottom: 12px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.info-text {
+    font-size: 0.85rem;
+    color: #ccc;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.info-section {
+    margin-bottom: 20px;
+}
+
+.info-section h4 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 12px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+}
+
+/* Concept Tags */
+.concept-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag {
+    background: rgba(0, 255, 204, 0.08);
+    color: var(--accent-color);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    letter-spacing: 0.5px;
+}
+
+/* Code Block */
+.code-wrapper {
+    background: rgba(5, 5, 8, 0.6);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    overflow-x: auto;
+    padding: 12px;
+}
+
+#info-code {
+    font-family: 'Fira Code', monospace, Consolas;
+    font-size: 0.75rem;
+    color: #a3b8cc;
+    line-height: 1.5;
+    white-space: pre; /* Keeps code formatting intact */
+}

@@ -1,0 +1,114 @@
+/* --- Sidebar --- */
+#sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.8));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border-light);
+    z-index: 1000;
+    color: #fff;
+    transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+    overflow: visible;
+}
+
+#sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+.sidebar-scroll-area {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 40px 24px;
+}
+
+#sidebar-toggle {
+    position: absolute;
+    top: 24px;
+    right: -44px;
+    width: 44px;
+    height: 44px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 0 8px 8px 0;
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    transition: transform var(--transition-speed) ease;
+}
+
+#sidebar.collapsed #sidebar-toggle svg {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+/* --- Sidebar Navigation Styling --- */
+.nav-header {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+.nav-header span { color: var(--accent-color); }
+
+.nav-section {
+    color: #777;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    margin: 30px 0 10px 0;
+    padding-left: 12px;
+}
+
+.nav-item {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #aaa;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.nav-item.active {
+    background: rgba(0, 255, 204, 0.08);
+    color: var(--accent-color);
+    border-left: 3px solid var(--accent-color);
+}
+
+.sub-nav {
+    padding-left: 24px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        z-index: 150;
+        height: 100dvh;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+    #sidebar-toggle {
+        right: -44px;
+        top: 15px;
+        z-index: 200;
+    }
+    .sidebar-scroll-area {
+        padding: 20px;
+    }
+}
