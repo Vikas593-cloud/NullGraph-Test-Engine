@@ -108,13 +108,21 @@ export async function setupAizawaCanvas(engine: NullGraph, camera: Camera, getSt
             engine.updateBatchData(postBatch, postProcessTimeData, 1);
         },
         cameraUpdate: (cam: Camera, time: number) => {
-            // Keep the camera slightly elevated to look down into the "apple" shape of the attractor
+            // Tweak these values to find the perfect framing
+            const orbitRadius = 100; // Increased from 50 to pull the camera back
+            const baseHeight = 80;   // Increased from 30 to look down more
+            const heightSway = 20;   // Increased from 10 for a bit more dynamic vertical movement
+            const lookAtY = 15;      // Lifted from 5 to better center the 'apple' shape
+
+            // Keep the camera elevated to look down into the attractor
             const eye: [number, number, number] = [
-                Math.sin(time * 0.2) * 50,
-                30 + Math.cos(time * 0.1) * 10,
-                Math.cos(time * 0.2) * 50
+                Math.sin(time * 0.2) * orbitRadius,
+                baseHeight + Math.cos(time * 0.1) * heightSway,
+                Math.cos(time * 0.2) * orbitRadius
             ];
-            cam.updateView(eye, [0, 5, 0]);
+
+            // Look exactly at the vertical center of the attractor
+            cam.updateView(eye, [0, lookAtY, 0]);
         },
         destroy: () => {
             window.removeEventListener('mousemove', onMouseMove);

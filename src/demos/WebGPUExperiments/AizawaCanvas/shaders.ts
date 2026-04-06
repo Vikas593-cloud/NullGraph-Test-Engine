@@ -29,46 +29,52 @@ export const aizawaComputeShader = `
         // 1. AIZAWA ATTRACTOR MATH
         let a = 0.95; let b = 0.7; let c = 0.6; let d = 3.5; let e = 0.25; let f = 0.1;
         
-        // Scale down position to keep the math stable
-        let p = pos * 0.3; 
+        // Map world space down into the tiny mathematical domain
+        let mathScale = 0.05; 
+        
+        // FIX: The Aizawa "stem" points along the Z-axis. 
+        // We swap world Y and Z here so the apple stands upright relative to your camera.
+        let p = vec3<f32>(pos.x, pos.z, pos.y) * mathScale; 
         
         let dx = (p.z - b) * p.x - d * p.y;
         let dy = d * p.x + (p.z - b) * p.y;
         let dz = c + a * p.z - (p.z * p.z * p.z)/3.0 - (p.x * p.x + p.y * p.y) * (1.0 + e * p.z) + f * p.z * p.x * p.x * p.x;
         
-        // Scale force back up for WebGPU coordinate space
-        var force = vec3<f32>(dx, dy, dz) * 12.0;
+        // FIX: The equations return TARGET VELOCITY. 
+        // We divide by mathScale to bring the speed back up to world-scale.
+        // We also swap Z and Y back to return to world coordinates.
+        let targetVel = vec3<f32>(dx, dz, dy) / mathScale;
 
-        // Add micro-noise so particles don't overlap perfectly (makes the ribbons thick)
-        force += hash3(pos * 5.0) * 8.0;
+        // FIX: Tame the noise. 1.5 is plenty to give the ribbons volume.
+        let noise = hash3(pos * 0.5) * 1.5;
 
-        // 2. MOUSE VISCOSITY FIELD
+        // 2. FLOW FIELD & MOUSE INTERACTION
         let mouseWorld = vec3<f32>(camera.eye.x * 50.0, camera.eye.y * 50.0, 10.0);
         let distToMouse = length(pos - mouseWorld);
         
-        // If close to the mouse, massively increase friction (viscosity)
-        var friction = 0.96; 
-        if (distToMouse < 25.0) {
-            friction = 0.70; // Thick sludge
-        }
-
         // 3. INTEGRATION
         let dt = 0.016; 
-        vel += force * dt;
-        vel *= friction; 
-        pos += vel * dt;
+        
+        // FIX: Remove inertia entirely. Chaotic attractors must strictly follow their vector field!
+        vel = targetVel + noise; 
+        
+        // Instead of altering steering for the mouse, we alter local time (viscosity)
+        var localDt = dt * 1.5; 
+        if (distToMouse < 25.0) {
+            localDt *= 0.05; // Mouse creates a thick "sludge" that slows time
+        }
+
+        pos += vel * localDt;
 
         // 4. NEON ACRYLIC COLORS
         let speed = length(vel);
-        let posNorm = normalize(pos);
         
-        // Map color to spatial height and velocity to get a "layered paint" look
         let colA = vec3<f32>(0.0, 1.0, 0.8); // Cyan
         let colB = vec3<f32>(1.0, 0.8, 0.0); // Gold
         let colC = vec3<f32>(1.0, 0.0, 0.5); // Magenta
         
         var finalColor = mix(colA, colB, smoothstep(-15.0, 15.0, pos.y));
-        finalColor = mix(finalColor, colC, smoothstep(15.0, 40.0, speed));
+        finalColor = mix(finalColor, colC, smoothstep(20.0, 60.0, speed)); // Widened the speed gradient
 
         // 5. WRITE
         physicsState[base + 1u] = pos.x; physicsState[base + 2u] = pos.y; physicsState[base + 3u] = pos.z;
