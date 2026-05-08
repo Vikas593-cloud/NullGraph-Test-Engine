@@ -1,5 +1,5 @@
 import { Camera, NullGraph } from "null-graph";
-import { cubeIndices, cubeVertices } from "../data";
+import { cubeIndices, cubeVertices } from "../data/geometryData";
 
 export async function setupForwardLightingCyberPunk2077(
     engine: NullGraph,

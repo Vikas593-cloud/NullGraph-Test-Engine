@@ -1,0 +1,276 @@
+
+
+<blockquote>
+    <p>The <code>PBRShaderChunks</code> module and <code>buildPBRShader</code> function provide a dynamic WGSL shader generation system for physically-based rendering in NullGraph. Together they assemble vertex and fragment shaders by composing reusable WGSL code chunks based on a material's configuration, supporting both static and skinned meshes.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>PBRShaderChunks</code> (Module Constant)</h2>
+
+<p>Contains pre-written WGSL code blocks used as building blocks for PBR shader generation. Each chunk encapsulates a specific set of bindings, structs, or mathematical functions.</p>
+
+<hr>
+
+<h3><code>PBRChunks.CommonBindings</code></h3>
+
+<p>The core bindings and structs required by every PBR shader variant.</p>
+
+<h4>Contents</h4>
+
+<ul>
+    <li>
+        <strong>Constants</strong>: <code>PI</code> (π as <code>f32</code>)
+    </li>
+    <li>
+        <strong><code>Camera</code> struct</strong> (<code>uniform</code>, group 0, binding 0):
+        <ul>
+            <li><code>viewProj: mat4x4&lt;f32&gt;</code> — The combined view-projection matrix</li>
+            <li><code>eyePos: vec3&lt;f32&gt;</code> — World-space camera position</li>
+            <li><code>simTime: f32</code> — Simulation time in seconds</li>
+        </ul>
+    </li>
+    <li>
+        <strong>ECS storage buffer</strong> (<code>storage, read</code>, group 0, binding 1):
+        <ul>
+            <li><code>ecs: array&lt;f32&gt;</code> — Engine component storage containing per-instance transform data (packed as 14 floats per instance)</li>
+        </ul>
+    </li>
+    <li>
+        <strong>Material bindings</strong> (group 1):
+        <ul>
+            <li><code>samp: sampler</code> (binding 0) — Texture sampler</li>
+            <li><code>texAlbedo: texture_2d&lt;f32&gt;</code> (binding 1) — Albedo/base color map</li>
+            <li><code>texNormal: texture_2d&lt;f32&gt;</code> (binding 2) — Normal map</li>
+            <li><code>texMRAO: texture_2d&lt;f32&gt;</code> (binding 3) — Packed metallic/roughness/AO map</li>
+        </ul>
+    </li>
+    <li>
+        <strong><code>MaterialParams</code> struct</strong> (<code>uniform</code>, group 1, binding 4):
+        <ul>
+            <li><code>baseColor: vec4&lt;f32&gt;</code> — RGBA tint color</li>
+            <li><code>metallic: f32</code> — Metallic multiplier</li>
+            <li><code>roughness: f32</code> — Roughness multiplier</li>
+            <li><code>mapFormat: f32</code> — Packed map channel selector (<code>0.0</code> for ARM, <code>1.0</code> for MRAO)</li>
+            <li><code>padding: f32</code> — Alignment padding (unused)</li>
+        </ul>
+    </li>
+    <li>
+        <strong><code>VertexOut</code> struct</strong> — Output from vertex shader to fragment shader:
+        <ul>
+            <li><code>clipPos: vec4&lt;f32&gt;</code> — Clip-space position (<code>@builtin(position)</code>)</li>
+            <li><code>worldPos: vec3&lt;f32&gt;</code> — World-space position (<code>@location(0)</code>)</li>
+            <li><code>worldNormal: vec3&lt;f32&gt;</code> — World-space normal (<code>@location(1)</code>)</li>
+            <li><code>uv: vec2&lt;f32&gt;</code> — Texture coordinates (<code>@location(2)</code>)</li>
+        </ul>
+    </li>
+</ul>
+
+<hr>
+
+<h3><code>PBRChunks.SkinningBindings</code></h3>
+
+<p>Optional bindings included only when a mesh is skinned.</p>
+
+<h4>Contents</h4>
+
+<ul>
+    <li>
+        <strong><code>Skeleton</code> struct</strong> (<code>uniform</code>, group 2, binding 0):
+        <ul>
+            <li><code>boneMatrices: array&lt;mat4x4&lt;f32&gt;, 70&gt;</code> — Array of bone transformation matrices (supports up to 70 bones)</li>
+        </ul>
+    </li>
+</ul>
+
+<hr>
+
+<h3><code>PBRChunks.PBRMath</code></h3>
+
+<p>Mathematical utility functions used in PBR lighting calculations.</p>
+
+<h4>Functions</h4>
+
+<ul>
+    <li>
+        <code><strong>DistributionGGX(N, H, roughness)</strong></code><br>
+        Computes the GGX/Trowbridge-Reitz normal distribution function.<br>
+        <strong>Parameters</strong>: <code>N: vec3&lt;f32&gt;</code>, <code>H: vec3&lt;f32&gt;</code>, <code>roughness: f32</code><br>
+        <strong>Returns</strong>: <code>f32</code>
+    </li>
+    <li>
+        <code><strong>rotateVector(v, q)</strong></code><br>
+        Rotates a 3D vector by a quaternion.<br>
+        <strong>Parameters</strong>: <code>v: vec3&lt;f32&gt;</code>, <code>q: vec4&lt;f32&gt;</code> (quaternion as <code>vec4</code>)<br>
+        <strong>Returns</strong>: <code>vec3&lt;f32&gt;</code>
+    </li>
+    <li>
+        <code><strong>GeometrySchlickGGX(NdotV, roughness)</strong></code><br>
+        Computes the Schlick-GGX geometry occlusion term for a single direction.<br>
+        <strong>Parameters</strong>: <code>NdotV: f32</code>, <code>roughness: f32</code><br>
+        <strong>Returns</strong>: <code>f32</code>
+    </li>
+    <li>
+        <code><strong>GeometrySmith(N, V, L, roughness)</strong></code><br>
+        Computes the combined Smith geometry shadowing/masking function.<br>
+        <strong>Parameters</strong>: <code>N: vec3&lt;f32&gt;</code>, <code>V: vec3&lt;f32&gt;</code>, <code>L: vec3&lt;f32&gt;</code>, <code>roughness: f32</code><br>
+        <strong>Returns</strong>: <code>f32</code>
+    </li>
+    <li>
+        <code><strong>fresnelSchlick(cosTheta, F0)</strong></code><br>
+        Computes the Schlick approximation for the Fresnel reflectance term.<br>
+        <strong>Parameters</strong>: <code>cosTheta: f32</code>, <code>F0: vec3&lt;f32&gt;</code> (surface reflectance at normal incidence)<br>
+        <strong>Returns</strong>: <code>vec3&lt;f32&gt;</code>
+    </li>
+    <li>
+        <code><strong>getNormalFromMap(uv, worldPos, worldNormal)</strong></code><br>
+        Decodes a tangent-space normal from the normal map and transforms it to world space using screen-space derivatives.<br>
+        <strong>Parameters</strong>: <code>uv: vec2&lt;f32&gt;</code>, <code>worldPos: vec3&lt;f32&gt;</code>, <code>worldNormal: vec3&lt;f32&gt;</code><br>
+        <strong>Returns</strong>: <code>vec3&lt;f32&gt;</code> — The perturbed world-space normal vector
+    </li>
+</ul>
+
+<hr>
+
+<h2><code>buildPBRShader</code> (Function)</h2>
+
+<p>Assembles a complete WGSL PBR shader string from the provided configuration and the <code>PBRChunks</code> module.</p>
+
+<hr>
+
+<h3><code>buildPBRShader(config)</code></h3>
+
+<p>Generates a PBR vertex and fragment shader pair.</p>
+
+<ul>
+    <li>
+        <strong>config</strong> (<code>ShaderConfig</code>):<br>
+        Configuration object specifying which shader features to enable.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>string</code><br>
+        A complete WGSL shader source string containing all bindings, structs, math functions, and the entry points <code>vs_main</code> and <code>fs_main</code>.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Configuration Interface</h2>
+
+<h3><code>ShaderConfig</code> (Interface)</h3>
+
+<p>Defines the features that can be toggled when building a PBR shader.</p>
+
+<h4>Properties</h4>
+
+<ul>
+    <li>
+        <code><strong>useSkinning: boolean</strong></code><br>
+        Whether to include skeletal animation (bone transforms) in the vertex shader.<br>
+        When <code>true</code>: includes <code>SkinningBindings</code>, expects joint/weight vertex attributes, and applies skinned transforms.<br>
+        When <code>false</code>: uses static mesh transforms directly.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Vertex Shader Behavior</h2>
+
+<h3>Vertex Attributes</h3>
+
+<ul>
+    <li><code>@location(0)</code> — Local-space position (<code>vec3&lt;f32&gt;</code>)</li>
+    <li><code>@location(1)</code> — Normal vector (<code>vec3&lt;f32&gt;</code>)</li>
+    <li><code>@location(2)</code> — UV coordinates (<code>vec2&lt;f32&gt;</code>)</li>
+    <li><code>@location(3)</code> — Joint indices (<code>vec4&lt;f32&gt;</code>) — <em>Only when <code>useSkinning</code> is <code>true</code></em></li>
+    <li><code>@location(4)</code> — Joint weights (<code>vec4&lt;f32&gt;</code>) — <em>Only when <code>useSkinning</code> is <code>true</code></em></li>
+    <li><code>@builtin(instance_index)</code> — GPU instance index for ECS transform lookup</li>
+</ul>
+
+<h3>Transform Pipeline</h3>
+
+<ol>
+    <li>Fetch ECS transform (position, rotation quaternion, scale) from the <code>ecs</code> storage buffer using the instance index</li>
+    <li>If skinning is enabled: compute the weighted skin matrix from four bone matrices and apply it to the local position and normal</li>
+    <li>Apply scale, rotation (via quaternion), and translation to obtain world-space position</li>
+    <li>Rotate the normal to world space</li>
+    <li>Multiply by the camera view-projection matrix for clip-space output</li>
+</ol>
+
+<hr>
+
+<h2>Fragment Shader Behavior</h2>
+
+<h3>PBR Lighting Model</h3>
+
+<ul>
+    <li>Reads albedo from <code>texAlbedo</code> and multiplies by <code>material.baseColor.rgb</code></li>
+    <li>Samples the packed ORM map (<code>texMRAO</code>) and interprets channels based on <code>material.mapFormat</code>:
+        <ul>
+            <li><strong>ARM</strong> (<code>mapFormat &lt; 0.5</code>): R=AO, G=Roughness, B=Metallic</li>
+            <li><strong>MRAO</strong> (<code>mapFormat ≥ 0.5</code>): R=Metallic, G=Roughness, B=AO</li>
+        </ul>
+    </li>
+    <li>Computes the perturbed world-space normal using <code>getNormalFromMap</code></li>
+    <li>Calculates a single directional light contribution using the Cook-Torrance microfacet BRDF:
+        <ul>
+            <li>GGX normal distribution (<code>DistributionGGX</code>)</li>
+            <li>Smith geometry term (<code>GeometrySmith</code>)</li>
+            <li>Schlick Fresnel approximation (<code>fresnelSchlick</code>)</li>
+        </ul>
+    </li>
+    <li>Adds constant ambient lighting modulated by albedo and AO</li>
+    <li>Applies Reinhard tonemapping and gamma correction (1/2.2)</li>
+    <li>Outputs the final color with the material's base alpha</li>
+</ul>
+
+<h3>Hardcoded Light</h3>
+
+<p>The current implementation uses a single hardcoded directional light:</p>
+
+<ul>
+    <li><strong>Direction</strong>: <code>normalize(vec3&lt;f32&gt;(1.0, 1.0, 0.5))</code></li>
+    <li><strong>Color</strong>: <code>vec3&lt;f32&gt;(3.0, 3.0, 3.0)</code></li>
+    <li><strong>Ambient</strong>: <code>vec3&lt;f32&gt;(0.3) * albedo * ao</code></li>
+</ul>
+
+<hr>
+
+<h2>Shader Assembly Order</h2>
+
+<p>The generated shader string is assembled in the following fixed order:</p>
+
+<ol>
+    <li><code>PBRChunks.CommonBindings</code> — Always included</li>
+    <li><code>PBRChunks.SkinningBindings</code> — Included only if <code>config.useSkinning</code> is <code>true</code></li>
+    <li><code>PBRChunks.PBRMath</code> — Always included</li>
+    <li>Vertex shader (<code>vs_main</code>)</li>
+    <li>Fragment shader (<code>fs_main</code>)</li>
+</ol>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { buildPBRShader } from './ShaderBuilder';
+
+// Build a shader for static meshes
+const staticShader = buildPBRShader({ useSkinning: false });
+
+// Build a shader for skinned meshes
+const skinnedShader = buildPBRShader({ useSkinning: true });
+
+// The resulting strings are ready to be used with device.createShaderModule()
+const shaderModule = device.createShaderModule({ code: staticShader });
+</code></pre>
+
+<hr>
+
+<h2>Notes</h2>
+
+<ul>
+    <li>The <code>ShaderConfig</code> interface is designed with comments for future extensions (e.g., <code>maxLights</code>, <code>useNormalMap</code>, <code>useAlphaClipping</code>) but currently only <code>useSkinning</code> is functional.</li>
+    <li>Skinning supports up to 70 bone matrices as defined in the <code>Skeleton</code> struct.</li>
+    <li>Each ECS instance consumes 14 floats in the storage buffer: 2 reserved (<code>base + 0u</code>, <code>base + 11u</code> through <code>base + 13u</code>), 3 for position, 4 for rotation quaternion, and 3 for scale.</li>
+    <li>The normal map is mandatory for the current implementation; the fragment shader always calls <code>getNormalFromMap</code>, which samples <code>texNormal</code>.</li>
+</ul>

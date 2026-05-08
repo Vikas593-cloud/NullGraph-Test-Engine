@@ -1,38 +1,35 @@
-/* --- Dashboard / FPS Counter --- */
+
+/* --- Dashboard / Performance Graph --- */
 #dashboard {
     position: fixed;
     top: 24px;
-    right: calc(var(--right-panel-width) + 24px);
+    width: 240px;
+    right: calc(var(--right-panel-width) + 75px);
     z-index: 100;
-    background: rgba(15, 15, 20, 0.8);
+    background: rgba(15, 15, 20, 0.85); /* Slightly more opaque for the graph */
     backdrop-filter: blur(10px);
+    cursor: grab;
     -webkit-backdrop-filter: blur(10px);
-    padding: 10px 20px;
+    -webkit-user-select: none; /* Safari */
+    user-select: none;         /* Standard */
+    padding: 12px;
     border-radius: 8px;
     border: 1px solid var(--border-light);
     display: flex;
-    align-items: center;
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.9rem;
+    flex-direction: column; /* Stack vertically */
+    gap: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    transition: right var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
+    transition: background-color 0.2s, opacity 0.2s;
 }
 
 body.right-collapsed #dashboard {
-    right: 24px;
+    right: 75px;
 }
 
-.neon {
-    color: var(--accent-color);
-    text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
-    font-family: monospace;
-    font-size: 1.1rem;
-    margin-left: 8px;
-    min-width: 3ch;
-    display: inline-block;
-    text-align: right;
-}
+
+
+
+
 
 @media (max-width: 768px) {
     #dashboard {

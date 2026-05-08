@@ -1,0 +1,388 @@
+
+<blockquote>
+    <p>The <code>MathUtils</code> module provides a collection of lightweight, allocation-conscious mathematical utility functions for 3D graphics. It includes matrix operations (identity, multiplication, TRS construction), vector transformation (position and normal), and interpolation functions (linear and spherical) — all operating on plain <code>Float32Array</code> and <code>number[]</code> types without external dependencies.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>MathUtils</code> (Module Constant)</h2>
+
+<p>A static utility object containing pure functions for matrix math, vector transforms, and animation interpolation used throughout the NullGraph pipeline (GLB parsing, animation evaluation, and transform baking).</p>
+
+<p>All methods are pure functions with no internal state. No instantiation is required.</p>
+
+<hr>
+
+<h2>Matrix Construction</h2>
+
+<h3><code>MathUtils.identity()</code></h3>
+
+<p>Creates and returns a new 4×4 identity matrix.</p>
+
+<ul>
+    <li>
+        <strong>Returns</strong>: <code>Float32Array</code><br>
+        A 16-element <code>Float32Array</code> representing a column-major 4×4 identity matrix. Diagonal elements are <code>1.0</code>; all other elements are <code>0.0</code>.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<p>Allocates and returns a new buffer each call. The output is suitable for direct use as a default transform, bind pose matrix, or multiplicative identity.</p>
+
+<hr>
+
+<h3><code>MathUtils.fromTRS(t, r, s)</code></h3>
+
+<p>Constructs a 4×4 affine transformation matrix from translation, rotation (quaternion), and scale components.</p>
+
+<ul>
+    <li>
+        <strong>t</strong> (<code>number[] | [number, number, number]</code>):<br>
+        Translation vector <code>[x, y, z]</code>.
+    </li>
+    <li>
+        <strong>r</strong> (<code>number[] | [number, number, number, number]</code>):<br>
+        Rotation quaternion <code>[x, y, z, w]</code>.
+    </li>
+    <li>
+        <strong>s</strong> (<code>number[] | [number, number, number]</code>):<br>
+        Scale vector <code>[x, y, z]</code>.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>Float32Array</code><br>
+        A 16-element <code>Float32Array</code> representing the combined TRS matrix in column-major order.
+    </li>
+</ul>
+
+<h3>Matrix Layout</h3>
+
+<p>The resulting matrix is constructed as:</p>
+
+<pre><code>M = T × R × S
+</code></pre>
+
+<p>Where the rotation submatrix is derived from the quaternion using the standard conversion:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Column</th>
+        <th>Row 0</th>
+        <th>Row 1</th>
+        <th>Row 2</th>
+        <th>Row 3</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>0</strong></td>
+        <td><code>1 - 2(yy + zz)</code></td>
+        <td><code>2(xy + wz)</code></td>
+        <td><code>2(xz - wy)</code></td>
+        <td><code>0</code></td>
+    </tr>
+    <tr>
+        <td><strong>1</strong></td>
+        <td><code>2(xy - wz)</code></td>
+        <td><code>1 - 2(xx + zz)</code></td>
+        <td><code>2(yz + wx)</code></td>
+        <td><code>0</code></td>
+    </tr>
+    <tr>
+        <td><strong>2</strong></td>
+        <td><code>2(xz + wy)</code></td>
+        <td><code>2(yz - wx)</code></td>
+        <td><code>1 - 2(xx + yy)</code></td>
+        <td><code>0</code></td>
+    </tr>
+    <tr>
+        <td><strong>3</strong></td>
+        <td><code>t[0]</code></td>
+        <td><code>t[1]</code></td>
+        <td><code>t[2]</code></td>
+        <td><code>1</code></td>
+    </tr>
+    </tbody>
+</table>
+
+<p>Scale is multiplied into each column of the rotation submatrix before translation is written to column 3.</p>
+
+<hr>
+
+<h2>Matrix Operations</h2>
+
+<h3><code>MathUtils.multiply(a, b)</code></h3>
+
+<p>Multiplies two 4×4 column-major matrices and returns the product.</p>
+
+<ul>
+    <li>
+        <strong>a</strong> (<code>Float32Array</code>):<br>
+        Left-hand 4×4 matrix (16 elements, column-major).
+    </li>
+    <li>
+        <strong>b</strong> (<code>Float32Array</code>):<br>
+        Right-hand 4×4 matrix (16 elements, column-major).
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>Float32Array</code><br>
+        A new 16-element <code>Float32Array</code> representing the product <code>a × b</code> in column-major order.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Unrolls the inner loops for performance — each element of the output is computed with an explicit dot product of one row of <code>a</code> and one column of <code>b</code>.</li>
+    <li>Allocates a new output buffer; does not mutate either input matrix.</li>
+</ul>
+
+<h3>Note</h3>
+
+<p>This implements standard matrix multiplication where the vector convention is column vectors. In this convention, <code>multiply(a, b)</code> applies transform <code>a</code> first, then <code>b</code> in a transformation pipeline (<code>v' = a × b × v</code>, meaning <code>b</code> is applied first to the vertex).</p>
+
+<hr>
+
+<h2>Vector Transformations</h2>
+
+<h3><code>MathUtils.transformPos(v, m)</code></h3>
+
+<p>Transforms a 3D position vector by a 4×4 matrix, applying perspective division.</p>
+
+<ul>
+    <li>
+        <strong>v</strong> (<code>number[] | [number, number, number]</code>):<br>
+        The position vector <code>[x, y, z]</code> to transform.
+    </li>
+    <li>
+        <strong>m</strong> (<code>Float32Array</code>):<br>
+        A 16-element column-major 4×4 transformation matrix.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>[number, number, number]</code><br>
+        The transformed position as a 3-element array.
+    </li>
+</ul>
+
+<h3>Formula</h3>
+
+<pre><code>w = m[3]*x + m[7]*y + m[11]*z + m[15]
+x' = (m[0]*x + m[4]*y + m[8]*z + m[12]) / w
+y' = (m[1]*x + m[5]*y + m[9]*z + m[13]) / w
+z' = (m[2]*x + m[6]*y + m[10]*z + m[14]) / w
+</code></pre>
+
+<p>If <code>w</code> is <code>0</code>, it is clamped to <code>1.0</code> to avoid division by zero. This handles pure affine matrices (where <code>m[15]</code> is <code>1</code> and the bottom row is <code>[0,0,0,1]</code>) without unnecessary perspective division.</p>
+
+<hr>
+
+<h3><code>MathUtils.transformNorm(v, m)</code></h3>
+
+<p>Transforms a 3D normal vector by the inverse transpose of a 4×4 matrix (derived by using only the upper-left 3×3 submatrix), preserving orthogonality for non-uniform scales.</p>
+
+<ul>
+    <li>
+        <strong>v</strong> (<code>number[] | [number, number, number]</code>):<br>
+        The normal vector <code>[x, y, z]</code> to transform.
+    </li>
+    <li>
+        <strong>m</strong> (<code>Float32Array</code>):<br>
+        A 16-element column-major 4×4 transformation matrix. Only the upper-left 3×3 rotation/scale submatrix is used.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>[number, number, number]</code><br>
+        The transformed normal as a 3-element array (not renormalized).
+    </li>
+</ul>
+
+<h3>Formula</h3>
+
+<pre><code>x' = m[0]*x + m[4]*y + m[8]*z
+y' = m[1]*x + m[5]*y + m[9]*z
+z' = m[2]*x + m[6]*y + m[10]*z
+</code></pre>
+
+<p>This uses the correct normal transformation for affine matrices where the upper-left 3×3 represents the rotation and scale. Translation components (columns 3 and 4) are omitted since normals are direction vectors unaffected by translation.</p>
+
+<hr>
+
+<h2>Interpolation Functions</h2>
+
+<h3><code>MathUtils.lerp(a, b, t, out, offset)</code></h3>
+
+<p>Performs linear interpolation between two 3-component vectors and writes the result directly into a pre-allocated <code>Float32Array</code> at a specified offset.</p>
+
+<ul>
+    <li>
+        <strong>a</strong> (<code>number[]</code>):<br>
+        The start vector <code>[x, y, z]</code> (at <code>t = 0</code>).
+    </li>
+    <li>
+        <strong>b</strong> (<code>number[]</code>):<br>
+        The end vector <code>[x, y, z]</code> (at <code>t = 1</code>).
+    </li>
+    <li>
+        <strong>t</strong> (<code>number</code>):<br>
+        Interpolation factor in the range <code>[0, 1]</code>. Values outside this range produce extrapolation.
+    </li>
+    <li>
+        <strong>out</strong> (<code>Float32Array</code>):<br>
+        The pre-allocated output array to write results into.
+    </li>
+    <li>
+        <strong>offset</strong> (<code>number</code>):<br>
+        The starting index in the output array where the interpolated values are written. Writes 3 consecutive floats at <code>offset</code>, <code>offset+1</code>, and <code>offset+2</code>.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Formula</h3>
+
+<pre><code>out[offset + i] = a[i] + t × (b[i] - a[i])  // for i = 0, 1, 2
+</code></pre>
+
+<h3>Performance Note</h3>
+
+<p>Writes directly into the output buffer at the given offset, avoiding intermediate allocations. This is critical for per-frame animation evaluation where minimizing garbage collection pressure is essential.</p>
+
+<hr>
+
+<h3><code>MathUtils.slerp(a, b, t, out, offset)</code></h3>
+
+<p>Performs spherical linear interpolation between two quaternions and writes the result into a pre-allocated <code>Float32Array</code> at a specified offset.</p>
+
+<ul>
+    <li>
+        <strong>a</strong> (<code>number[]</code>):<br>
+        The start quaternion <code>[x, y, z, w]</code> (at <code>t = 0</code>).
+    </li>
+    <li>
+        <strong>b</strong> (<code>number[]</code>):<br>
+        The end quaternion <code>[x, y, z, w]</code> (at <code>t = 1</code>).
+    </li>
+    <li>
+        <strong>t</strong> (<code>number</code>):<br>
+        Interpolation factor in the range <code>[0, 1]</code>.
+    </li>
+    <li>
+        <strong>out</strong> (<code>Float32Array</code>):<br>
+        The pre-allocated output array to write results into.
+    </li>
+    <li>
+        <strong>offset</strong> (<code>number</code>):<br>
+        The starting index in the output array where the interpolated quaternion is written. Writes 4 consecutive floats at <code>offset</code> through <code>offset+3</code>.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Algorithm</h3>
+
+<h4>1. Shortest Path Selection</h4>
+
+<p>The dot product between quaternions <code>a</code> and <code>b</code> is computed. If negative, quaternion <code>b</code> is negated to ensure rotation takes the shortest arc on the 4D hypersphere. This prevents interpolation from going the "long way around."</p>
+
+<h4>2. Degenerate Case 1 — Quaternions Nearly Identical</h4>
+
+<p>If <code>|cosHalfTheta| ≥ 1.0</code>, the quaternions are effectively the same. Quaternion <code>a</code> is copied directly to the output to avoid division by zero.</p>
+
+<h4>3. Degenerate Case 2 — Angle Very Small</h4>
+
+<p>If <code>sinHalfTheta &lt; 0.001</code>, the quaternions are very close. A fast linear approximation (Nlerp) is used:</p>
+
+<pre><code>out[offset + i] = 0.5 × a[i] + 0.5 × b[i]
+</code></pre>
+
+<p>This avoids numerical instability when <code>sinHalfTheta</code> approaches zero.</p>
+
+<h4>4. Standard Slerp</h4>
+
+<p>For non-degenerate cases, the standard spherical interpolation formula is used:</p>
+
+<pre><code>out = (sin((1-t) × θ) / sin(θ)) × a + (sin(t × θ) / sin(θ)) × b
+</code></pre>
+
+<p>Where <code>θ = acos(|cosHalfTheta|)</code>.</p>
+
+<hr>
+
+<h2>Memory Allocation Strategy</h2>
+
+<table>
+    <thead>
+    <tr>
+        <th>Method</th>
+        <th>Allocation</th>
+        <th>Notes</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>identity()</code></td>
+        <td>New <code>Float32Array</code></td>
+        <td>Each call allocates a fresh buffer</td>
+    </tr>
+    <tr>
+        <td><code>multiply()</code></td>
+        <td>New <code>Float32Array</code></td>
+        <td>Each call allocates a fresh output</td>
+    </tr>
+    <tr>
+        <td><code>fromTRS()</code></td>
+        <td>New <code>Float32Array</code></td>
+        <td>Each call allocates a fresh buffer</td>
+    </tr>
+    <tr>
+        <td><code>transformPos()</code></td>
+        <td>New <code>number[]</code> (3 elements)</td>
+        <td>Small allocation per call</td>
+    </tr>
+    <tr>
+        <td><code>transformNorm()</code></td>
+        <td>New <code>number[]</code> (3 elements)</td>
+        <td>Small allocation per call</td>
+    </tr>
+    <tr>
+        <td><code>lerp()</code></td>
+        <td><strong>None</strong></td>
+        <td>Writes into caller-provided buffer at offset</td>
+    </tr>
+    <tr>
+        <td><code>slerp()</code></td>
+        <td><strong>None</strong></td>
+        <td>Writes into caller-provided buffer at offset</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>The interpolation functions (<code>lerp</code> and <code>slerp</code>) are specifically designed to be allocation-free, writing directly into pre-allocated typed arrays with an offset parameter. This is critical for the <code>Animator</code> class, which evaluates dozens of animation channels per frame without creating garbage.</p>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { MathUtils } from './MathUtils';
+
+// Build a transformation matrix
+const translation = [1.0, 2.0, 3.0];
+const rotation = [0.0, 0.0, 0.0, 1.0]; // Identity quaternion
+const scale = [2.0, 2.0, 2.0];
+const worldMatrix = MathUtils.fromTRS(translation, rotation, scale);
+
+// Multiply matrices
+const parentMatrix = MathUtils.identity();
+const combined = MathUtils.multiply(parentMatrix, worldMatrix);
+
+// Transform a vertex
+const localPos = [1, 0, 0];
+const localNormal = [0, 1, 0];
+const worldPos = MathUtils.transformPos(localPos, combined);
+const worldNormal = MathUtils.transformNorm(localNormal, combined);
+
+// Interpolate animation values (allocation-free)
+const localTranslations = new Float32Array(100 * 3); // Pre-allocated
+MathUtils.lerp([0,0,0], [10,0,0], 0.5, localTranslations, 5 * 3);
+
+const localRotations = new Float32Array(100 * 4); // Pre-allocated
+MathUtils.slerp([0,0,0,1], [0,1,0,0], 0.5, localRotations, 5 * 4);
+</code></pre>

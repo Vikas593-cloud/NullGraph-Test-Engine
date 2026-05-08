@@ -3,11 +3,10 @@ export const deferredLightingShader = `
     @group(0) @binding(0) var<uniform> camera: Camera;
     @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
-    // Assuming null-graph binds the array sequentially
-    @group(1) @binding(0) var texAlbedo: texture_2d<f32>;
-    @group(1) @binding(1) var texNormal: texture_2d<f32>;
-    @group(1) @binding(2) var texPosition: texture_2d<f32>;
-    @group(1) @binding(3) var texSampler: sampler;
+    @group(1) @binding(1) var texAlbedo: texture_2d<f32>;
+    @group(1) @binding(2) var texNormal: texture_2d<f32>;
+    @group(1) @binding(3) var texPosition: texture_2d<f32>;
+    @group(1) @binding(0) var texSampler: sampler;
 
     struct VertexOut {
         @builtin(position) pos: vec4<f32>,

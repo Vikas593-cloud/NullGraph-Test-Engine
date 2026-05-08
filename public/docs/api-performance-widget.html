@@ -1,0 +1,351 @@
+Here is the API reference for the `PerformanceWidget` class, formatted in the requested style.
+
+---
+
+<blockquote>
+    <p>The <code>PerformanceWidget</code> class provides a draggable, fixed-position on-screen display for real-time performance metrics in NullGraph. It renders FPS (frames per second), CPU frame time, and GPU frame time as both numerical readouts and a scrolling line graph — all injected directly into the DOM with self-contained CSS and touch/mouse drag support.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>PerformanceWidget</code> (Class)</h2>
+
+<p>A self-contained HTML/CSS/Canvas overlay that displays frame timing metrics. It self-injects its styles and markup into the document, maintains a rolling 60-frame history for CPU and GPU times, draws a live line graph on an internal canvas, and supports repositioning via mouse or touch drag.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new PerformanceWidget()</code></h3>
+
+<p>Creates the performance widget, injecting all required CSS and HTML into the document and initializing the metric displays, graph canvas, and drag behavior.</p>
+
+<h3>Behavior</h3>
+
+<ol>
+    <li><strong>CSS Injection</strong>: Calls <code>injectCSS()</code> to add a <code>&lt;style&gt;</code> block with ID <code>ng-perf-style</code> to the document <code>&lt;head&gt;</code>. This is idempotent — if the style block already exists, it is not duplicated.</li>
+    <li><strong>HTML Injection</strong>: Creates a <code>&lt;div&gt;</code> with ID <code>ng-perf-widget</code> containing:
+        <ul>
+            <li>A metrics grid with three readouts: <strong>NET FPS</strong>, <strong>CPU</strong>, and <strong>GPU</strong>.</li>
+            <li>A <code>&lt;canvas&gt;</code> element (200×60 CSS pixels) for the scrolling history graph.</li>
+        </ul>
+    </li>
+    <li><strong>Element References</strong>: Caches references to the canvas, its 2D rendering context, and the three metric <code>&lt;span&gt;</code> elements.</li>
+    <li><strong>Drag Initialization</strong>: Calls <code>makeDraggable()</code> to enable mouse and touch-based repositioning of the widget.</li>
+</ol>
+
+<h3>Initial State</h3>
+
+<ul>
+    <li>FPS readout displays <code>60</code>.</li>
+    <li>CPU and GPU readouts display <code>0.0ms</code>.</li>
+    <li>Graph history buffers are initialized with 60 zeros.</li>
+    <li>Widget is positioned at <code>top: 20px; right: 20px</code> by default.</li>
+</ul>
+
+<hr>
+
+<h2>Public Methods</h2>
+
+<h3><code>tick()</code></h3>
+
+<p>Updates the FPS counter. Should be called synchronously once per animation frame to accurately track display refresh rate.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Increments an internal frame counter each call.</li>
+    <li>Once per second (when <code>performance.now() - lastUpdate ≥ 1000</code>):
+        <ul>
+            <li>Calculates the true FPS: <code>(frameCount × 1000) / elapsed</code>.</li>
+            <li>Clamps the displayed value to a maximum of 144 FPS.</li>
+            <li>Updates the <code>#ng-fps</code> element text.</li>
+            <li>Resets the frame counter and advances <code>lastUpdate</code> by exactly 1000ms (not to current time) to maintain a regular 1-second cadence regardless of frame timing irregularities.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Clamping Rationale</h3>
+
+<p>The 144 FPS display cap prevents the readout from showing unrealistically high values during light workloads (e.g., empty scenes running at thousands of FPS). The true frame rate is still available via the calculated value before clamping.</p>
+
+<hr>
+
+<h3><code>updateMetrics(cpuMs, gpuMs)</code></h3>
+
+<p>Updates the CPU and GPU millisecond readouts and appends the values to the scrolling history graph.</p>
+
+<ul>
+    <li>
+        <strong>cpuMs</strong> (<code>number</code>):<br>
+        CPU frame time in milliseconds. Typically measured via <code>performance.now()</code> delta between frames or from a JavaScript profiler.
+    </li>
+    <li>
+        <strong>gpuMs</strong> (<code>number</code>):<br>
+        GPU frame time in milliseconds. Typically received asynchronously from a <code>GPUProfiler</code> callback. A value of <code>0</code> indicates that GPU timing data is not yet available or not supported.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ol>
+    <li>Appends <code>cpuMs</code> to the CPU history array and shifts the oldest value off the front (maintaining a fixed length of 60 samples).</li>
+    <li>Appends <code>gpuMs</code> to the GPU history array with the same push/shift rolling window.</li>
+    <li>Updates the CPU readout text with the formatted value (1 decimal place).</li>
+    <li>Updates the GPU readout:
+        <ul>
+            <li>If <code>gpuMs === 0</code>: displays <code>"N/A"</code> in dim gray (<code>#555</code>) to indicate no GPU timing data is available.</li>
+            <li>If <code>gpuMs &gt; 0</code>: displays the formatted value in cyan (<code>#00ffcc</code>).</li>
+        </ul>
+    </li>
+    <li>Calls <code>drawGraph()</code> to re-render the canvas with the updated history data.</li>
+</ol>
+
+<hr>
+
+<h2>Internal Methods</h2>
+
+<h3><code>drawGraph()</code> <em>(Private)</em></h3>
+
+<p>Renders the scrolling performance history graph onto the internal canvas.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<h4>Canvas Resolution Handling</h4>
+
+<p>The canvas uses device pixel ratio (DPR) scaling for crisp rendering on high-DPI displays:</p>
+
+<ul>
+    <li>Checks if the canvas backing store dimensions match <code>cssWidth × dpr</code> and <code>cssHeight × dpr</code>.</li>
+    <li>If mismatched (e.g., after DPR change or initialization), resizes the backing store and resets the drawing transform.</li>
+</ul>
+
+<h4>Drawing Sequence</h4>
+
+<ol>
+    <li>Clears the canvas with <code>clearRect</code> (transparent background — the CSS <code>background: rgba(0,0,0,0.4)</code> on the canvas element provides the dark backdrop).</li>
+    <li>Scales the context by <code>dpr</code> so all subsequent drawing uses CSS pixel coordinates.</li>
+    <li>Draws a horizontal reference line at the 16.6ms mark (representing 60 FPS target):
+        <ul>
+            <li>The line position is calculated as <code>height - (16.6 / 32) × height</code>.</li>
+            <li>Drawn in translucent white (<code>rgba(255,255,255,0.15)</code>).</li>
+        </ul>
+    </li>
+    <li>Draws the CPU history path in yellow (<code>#ffcc00</code>) using <code>drawPath()</code>.</li>
+    <li>Draws the GPU history path in cyan (<code>#00ffcc</code>) using <code>drawPath()</code>.</li>
+</ol>
+
+<h4>Vertical Scale</h4>
+
+<p>Both paths use a fixed vertical scale of 0–32ms, where the bottom of the graph represents 0ms and the top represents 32ms. Values exceeding 32ms are clamped to the top of the graph. The horizontal step between samples is calculated as <code>canvasWidth / (HISTORY_SIZE - 1)</code>.</p>
+
+<hr>
+
+<h3><code>drawPath(data, color, step, height)</code> <em>(Private)</em></h3>
+
+<p>Draws a single polyline path from a history array onto the canvas.</p>
+
+<ul>
+    <li>
+        <strong>data</strong> (<code>number[]</code>):<br>
+        Array of millisecond values (length <code>HISTORY_SIZE</code>, currently 60).
+    </li>
+    <li>
+        <strong>color</strong> (<code>string</code>):<br>
+        CSS color string for the stroke (e.g., <code>'#ffcc00'</code>).
+    </li>
+    <li>
+        <strong>step</strong> (<code>number</code>):<br>
+        Horizontal pixel distance between consecutive data points.
+    </li>
+    <li>
+        <strong>height</strong> (<code>number</code>):<br>
+        Canvas CSS pixel height for vertical scaling.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Begins a new path and sets the stroke style and line width (1.5px).</li>
+    <li>Iterates over each millisecond value:
+        <ul>
+            <li><strong>X</strong>: <code>index × step</code> — evenly spaced across the canvas width.</li>
+            <li><strong>Y</strong>: <code>height - (min(ms, 32) / 32) × height</code> — inverted so lower values appear higher on the graph, clamped to 32ms maximum.</li>
+        </ul>
+    </li>
+    <li>Uses <code>moveTo</code> for the first point and <code>lineTo</code> for subsequent points, forming a connected polyline.</li>
+    <li>Strokes the path.</li>
+</ul>
+
+<hr>
+
+<h3><code>makeDraggable(el)</code> <em>(Private)</em></h3>
+
+<p>Enables mouse and touch drag functionality on the widget element, allowing the user to reposition it anywhere on the screen.</p>
+
+<ul>
+    <li>
+        <strong>el</strong> (<code>HTMLElement</code>):<br>
+        The DOM element to make draggable (the widget container).
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<h4>Event Handling</h4>
+
+<table>
+    <thead>
+    <tr>
+        <th>Event</th>
+        <th>Listener Target</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>mousedown</code></td>
+        <td>Widget element</td>
+        <td>Captures initial cursor position and widget position. Disables text selection via <code>user-select: none</code>. Switches widget from <code>right</code>-based positioning to <code>left</code>-based positioning for consistent drag math.</td>
+    </tr>
+    <tr>
+        <td><code>mousemove</code></td>
+        <td>Document</td>
+        <td>Calculates the delta from the initial cursor position and updates the widget's <code>left</code> and <code>top</code> CSS properties.</td>
+    </tr>
+    <tr>
+        <td><code>mouseup</code></td>
+        <td>Document</td>
+        <td>Ends dragging. Restores text selection.</td>
+    </tr>
+    <tr>
+        <td><code>touchstart</code></td>
+        <td>Widget element</td>
+        <td>Same as mousedown but uses <code>touches[0]</code> for coordinates. Registered with <code>{ passive: false }</code> to allow <code>preventDefault()</code> during drag.</td>
+    </tr>
+    <tr>
+        <td><code>touchmove</code></td>
+        <td>Document</td>
+        <td>Same as mousemove but uses <code>touches[0]</code>. Calls <code>preventDefault()</code> to suppress page scrolling during drag. Registered with <code>{ passive: false }</code>.</td>
+    </tr>
+    <tr>
+        <td><code>touchend</code></td>
+        <td>Document</td>
+        <td>Same as mouseup.</td>
+    </tr>
+    </tbody>
+</table>
+
+<h4>Positioning Behavior</h4>
+
+<ul>
+    <li>On drag start, the widget's initial <code>right</code> CSS property is converted to a <code>left</code> value and <code>right</code> is set to <code>auto</code>. This ensures consistent coordinate math throughout the drag operation.</li>
+    <li>After the first drag, the widget remains <code>left</code>-positioned. A page reload (or re-injection) will reset it to the default <code>right: 20px</code> position.</li>
+    <li>There is no boundary clamping — the widget can be dragged to any screen position, including partially off-screen.</li>
+</ul>
+
+<hr>
+
+<h3><code>injectCSS()</code> <em>(Private)</em></h3>
+
+<p>Injects the widget's stylesheet into the document <code>&lt;head&gt;</code> if it has not already been added.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Idempotency</h3>
+
+<p>Uses a guard check on <code>document.getElementById('ng-perf-style')</code>. If a style element with that ID already exists, the method returns immediately. This prevents duplicate style injections when multiple widgets are created in a single page lifecycle.</p>
+
+<h3>Visual Design</h3>
+
+<ul>
+    <li>Fixed position in the viewport (<code>position: fixed</code>).</li>
+    <li>Dark semi-transparent background with backdrop blur (<code>backdrop-filter: blur(10px)</code>).</li>
+    <li>Rounded corners, subtle border, and box shadow for depth.</li>
+    <li>Monospace font for consistent numerical display.</li>
+    <li><code>z-index: 9999</code> to ensure visibility above most page content.</li>
+    <li><code>cursor: grab</code> with <code>:active</code> state changing to <code>grabbing</code> during drag.</li>
+    <li>The internal canvas has <code>pointer-events: none</code> so drag events pass through to the container.</li>
+</ul>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { PerformanceWidget } from './PerformanceWidget';
+import { GPUProfiler } from './GPUProfiler';
+
+// Create the widget (self-injects into DOM)
+const perfWidget = new PerformanceWidget();
+
+// Create GPU profiler for GPU timing
+const gpuProfiler = new GPUProfiler(device);
+
+// Track CPU time manually
+let lastCpuTime = performance.now();
+
+// In the render loop:
+function frame() {
+    // 1. Update FPS (every frame, synchronous)
+    perfWidget.tick();
+
+    // 2. Measure CPU time
+    const now = performance.now();
+    const cpuMs = now - lastCpuTime;
+    lastCpuTime = now;
+
+    // 3. Begin GPU timing scope
+    gpuProfiler.begin();
+
+    // ... execute all render/compute passes ...
+
+    // 4. End GPU timing and update widget when data arrives
+    gpuProfiler.end((gpuMs) => {
+        perfWidget.updateMetrics(cpuMs, gpuMs);
+    });
+
+    // Note: updateMetrics can also be called synchronously with just CPU data
+    // if GPU data is not yet available:
+    // perfWidget.updateMetrics(cpuMs, 0);
+}
+</code></pre>
+
+<hr>
+
+<h2>Visual Reference</h2>
+
+<p>The widget renders as a compact panel with the following layout:</p>
+
+<pre><code>┌─────────────────────────┐
+│  NET FPS   CPU    GPU   │
+│    60     4.2ms  5.1ms  │
+│                         │
+│  ┌───────────────────┐  │
+│  │  ╱╲   ╱╲          │  │  ← Yellow line: CPU history
+│  │ ╱  ╲_╱  ╲___      │  │  ← Cyan line: GPU history
+│  │─────────────────  │  │  ← Dim white reference line at 16.6ms (60 FPS)
+│  │                   │  │
+│  └───────────────────┘  │
+└─────────────────────────┘
+</code></pre>
+
+<ul>
+    <li><strong>FPS</strong>: White, large text. Updates once per second.</li>
+    <li><strong>CPU</strong>: Yellow, shows latest frame time in milliseconds.</li>
+    <li><strong>GPU</strong>: Cyan when GPU data is available; gray <code>"N/A"</code> when not.</li>
+    <li><strong>Graph</strong>: 60-sample scrolling history, rightmost point is most recent. Y-axis: 0–32ms. The 16.6ms reference line indicates the 60 FPS budget.</li>
+</ul>

@@ -1,0 +1,234 @@
+
+<blockquote>
+    <p>The <code>NullGraph</code> class is the primary entry point for the engine. It manages the WebGPU device context, rendering pipeline, passes, and batches.</p>
+</blockquote>
+
+<hr>
+
+<h2>Public Properties</h2>
+<ul>
+    <li><code><strong>device: GPUDevice</strong></code><br>The native WebGPU device instance. Available only after <code>init()</code> has successfully resolved.</li>
+    <li><code><strong>bufferManager: BufferManager</strong></code><br>Utility for managing GPU buffers (Vertex, Index, Uniform, Storage).</li>
+    <li><code><strong>textureManager: TextureManager</strong></code><br>Utility for managing GPU textures and samplers.</li>
+</ul>
+
+<hr>
+
+<h2>Initialization & Lifecycle</h2>
+
+<h3><code>init(canvas, options?)</code></h3>
+<p>Initializes the WebGPU context, requests a device, and sets up internal managers.</p>
+<ul>
+    <li><strong>canvas</strong> (<code>HTMLCanvasElement</code>): The target canvas for rendering.</li>
+    <li><strong>options</strong> (<code>{ desiredFeatures?: GPUFeatureName[] }</code>): Optional configuration to request specific WebGPU features (e.g., <code>'indirect-first-instance'</code>).</li>
+    <li><strong>Returns</strong>: <code>Promise&lt;EngineInitResult&gt;</code> containing a success flag, enabled features, or an error message.</li>
+</ul>
+
+<h3><code>resize(width, height)</code></h3>
+<p>Resizes the underlying WebGPU context and swap chain to match the new dimensions.</p>
+<ul>
+    <li><strong>width</strong> (<code>number</code>): New width in pixels.</li>
+    <li><strong>height</strong> (<code>number</code>): New height in pixels.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h2>Pass Management</h2>
+
+<h3><code>createPass(config)</code></h3>
+<p>Creates a new Render Pass node. Passes can be chained for off-screen rendering or post-processing.</p>
+<ul>
+    <li><strong>config</strong> (<code>RenderPassConfig</code>): Configuration for color/depth attachments and clear values.</li>
+    <li><strong>Returns</strong>: <code>RenderPassNode</code></li>
+</ul>
+
+<h3><code>clearPasses()</code></h3>
+<p>Clears all currently tracked render passes from the engine.</p>
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h2>Batch Management</h2>
+
+<h3><code>createBatch(pass, config)</code></h3>
+<p>Creates a render batch within a specific pass. A batch represents a single draw call (or indirect draw) with a shared shader pipeline and vertex layout.</p>
+<ul>
+    <li><strong>pass</strong> (<code>RenderPassNode</code>): The pass this batch belongs to.</li>
+    <li><strong>config</strong> (<code>PipelineConfig</code>): Shader code, instance limits, stride, and pipeline layout.</li>
+    <li><strong>Returns</strong>: <code>RenderBatch</code></li>
+</ul>
+
+<h3><code>setBatchGeometry(batch, vertexBuffer, indexBuffer, indexCount, format?)</code></h3>
+<p>Binds the static geometry (VBO/IBO) to a specific batch.</p>
+<ul>
+    <li><strong>batch</strong> (<code>RenderBatch</code>): The target batch.</li>
+    <li><strong>vertexBuffer</strong> (<code>GPUBuffer</code>): The buffer containing vertex data.</li>
+    <li><strong>indexBuffer</strong> (<code>GPUBuffer</code>): The buffer containing index data.</li>
+    <li><strong>indexCount</strong> (<code>number</code>): Total number of indices to draw.</li>
+    <li><strong>format</strong> (<code>GPUIndexFormat</code>): Format of the indices. Defaults to <code>'uint16'</code>.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>updateBatchData(batch, rawData, instanceCount)</code></h3>
+<p>Streams contiguous flat array data directly to the GPU for this batch's instances.</p>
+<ul>
+    <li><strong>batch</strong> (<code>RenderBatch</code>): The target batch.</li>
+    <li><strong>rawData</strong> (<code>Float32Array</code>): The flat DOD array containing instance state (transforms, colors, etc.).</li>
+    <li><strong>instanceCount</strong> (<code>number</code>): The number of active instances to render.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>clearBatch(pass, batch)</code></h3>
+<p>Cleans up GPU resources for a specific batch and removes it from the pass.</p>
+<ul>
+    <li><strong>pass</strong> (<code>RenderPassNode</code>): The pass containing the batch.</li>
+    <li><strong>batch</strong> (<code>RenderBatch</code>): The batch to remove.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>clearBatches()</code></h3>
+<p>Clears all tracked render batches globally from the engine instance.</p>
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h2>Materials & Bind Groups</h2>
+
+<h3><code>attachTextureMaterial(batch, textureView, sampler, extraEntries?, groupIndex?)</code></h3>
+<p>Binds a texture and sampler to a batch. Useful for applying diffuse maps or chaining post-processing buffers.</p>
+<ul>
+    <li><strong>batch</strong> (<code>RenderBatch</code>): The target batch.</li>
+    <li><strong>textureView</strong> (<code>GPUTextureView | GPUTextureView[]</code>): The texture view(s) to bind.</li>
+    <li><strong>sampler</strong> (<code>GPUSampler</code>): The sampler for texture filtering.</li>
+    <li><strong>extraEntries</strong> (<code>GPUBindGroupEntry[]</code>): Optional additional buffer bindings to append to this group. Defaults to <code>[]</code>.</li>
+    <li><strong>groupIndex</strong> (<code>number</code>): The bind group index in the shader. Defaults to <code>1</code>.</li>
+    <li><strong>Returns</strong>: <code>GPUBindGroup</code></li>
+</ul>
+
+<h3><code>attachCustomBindGroup(batch, entries, groupIndex?, target?)</code></h3>
+<p>Attaches a completely custom bind group to a batch for advanced rendering or compute parameters.</p>
+<ul>
+    <li><strong>batch</strong> (<code>RenderBatch</code>): The target batch.</li>
+    <li><strong>entries</strong> (<code>GPUBindGroupEntry[]</code>): The layout entries for the bind group.</li>
+    <li><strong>groupIndex</strong> (<code>number</code>): The bind group index in the shader. Defaults to <code>1</code>.</li>
+    <li><strong>target</strong> (<code>'render' | 'compute' | 'both'</code>): Which pipeline this bind group applies to. Defaults to <code>'render'</code>.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h2>Rendering</h2>
+
+<h3><code>updateCamera(camera)</code></h3>
+<p>Updates the global camera uniform buffer. This writes 80 bytes (20 floats representing the View/Projection matrices and Camera Position) to the GPU.</p>
+<ul>
+    <li><strong>camera</strong> (<code>Camera</code>): The camera instance containing the updated buffer data.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>render()</code></h3>
+<p>Submits the current frame to the GPU. This traverses all registered passes and executes their associated batches.</p>
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+<blockquote>
+    <p>This document details the core data structures and interfaces that drive NullGraph's Render Batches and Pipeline Configurations.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>PipelineConfig</code> (Interface)</h2>
+<p>The configuration object required when creating a new Render Batch via <code>engine.createBatch(pass, config)</code>. It defines the shader pipeline, memory layout, and optional compute-driven indirect rendering settings.</p>
+
+<h3>Required Properties</h3>
+<ul>
+    <li><code><strong>shaderCode: string</strong></code><br>The WGSL source code for the vertex and fragment shaders.</li>
+    <li><code><strong>strideFloats: number</strong></code><br>The number of 32-bit floats per instance in your Data-Oriented array (e.g., 16 for a 4x4 matrix).</li>
+    <li><code><strong>maxInstances: number</strong></code><br>The maximum number of instances this batch will pre-allocate memory for.</li>
+</ul>
+
+<h3>Optional Pipeline Properties</h3>
+<ul>
+    <li><code><strong>vertexLayouts?: GPUVertexBufferLayout[]</strong></code><br>The layout descriptors for the static vertex buffers. Required if rendering geometry.</li>
+    <li><code><strong>topology?: GPUPrimitiveTopology</strong></code><br>The primitive topology (e.g., <code>'triangle-list'</code>, <code>'line-list'</code>).</li>
+    <li><code><strong>targetFormats?: GPUTextureFormat[]</strong></code><br>Formats of the color attachments this pipeline renders to.</li>
+    <li><code><strong>targetFormat?: GPUTextureFormat</strong></code><br>Convenience property for a single color attachment format.</li>
+    <li><code><strong>material?: Material</strong></code><br>An optional material instance to bind to this pipeline automatically.</li>
+</ul>
+
+<h3>Depth & Blend State</h3>
+<ul>
+    <li><code><strong>depthWriteEnabled?: boolean</strong></code><br>Whether to write to the depth buffer.</li>
+    <li><code><strong>depthCompare?: GPUCompareFunction</strong></code><br>The depth testing function (e.g., <code>'less'</code>, <code>'less-equal'</code>).</li>
+    <li><code><strong>blend?: GPUBlendState</strong></code><br>Alpha blending configuration.</li>
+</ul>
+
+<h3>GPU-Driven & Compute Properties</h3>
+<ul>
+    <li><code><strong>isIndirect?: boolean</strong></code><br>If true, the batch will use <code>drawIndexedIndirect</code> instead of standard instanced drawing.</li>
+    <li><code><strong>computeShaderCode?: string</strong></code><br>WGSL code for a compute shader to process instances and write indirect draw commands.</li>
+    <li><code><strong>sharedSourceBuffer?: GPUBuffer</strong></code><br>An optional buffer shared between passes to avoid uploading data multiple times.</li>
+    <li><code><strong>extraBindGroup?: GPUBindGroup</strong></code><br>An optional extra bind group to attach to the pipeline.</li>
+</ul>
+
+<hr>
+
+<h2><code>RenderBatch</code> (Class)</h2>
+<p>Represents a single rendering workload (Draw Call / Indirect Draw). Instances of this class are created and managed internally by the <code>BatchManager</code> and returned to you. <strong>Do not instantiate directly.</strong></p>
+
+<h3>Core State</h3>
+<ul>
+    <li><code><strong>pipeline: GPURenderPipeline</strong></code><br>The compiled WebGPU render pipeline.</li>
+    <li><code><strong>storageBuffer: GPUBuffer</strong></code><br>The pre-allocated Storage Buffer mapped to your main thread's Float32Array.</li>
+    <li><code><strong>bindGroup: GPUBindGroup</strong></code><br>The primary bind group containing the storage buffer.</li>
+    <li><code><strong>stride: number</strong></code><br>The float stride for the instance data.</li>
+</ul>
+
+<h3>Geometry State</h3>
+<ul>
+    <li><code><strong>vertexBuffer: GPUBuffer | null</strong></code><br>The bound static vertex buffer.</li>
+    <li><code><strong>indexBuffer: GPUBuffer | null</strong></code><br>The bound static index buffer.</li>
+    <li><code><strong>indexCount: number</strong></code><br>Total number of indices to draw per instance.</li>
+    <li><code><strong>indexFormat: GPUIndexFormat</strong></code><br>Defaults to <code>'uint16'</code>.</li>
+</ul>
+
+<h3>Instance Tracking</h3>
+<ul>
+    <li><code><strong>currentInstanceCount: number</strong></code><br>The number of active instances currently queued for rendering.</li>
+    <li><code><strong>maxInstanceCount?: number</strong></code><br>The capacity limit of the allocated storage buffer.</li>
+</ul>
+
+<h3>Indirect & Compute State</h3>
+<ul>
+    <li><code><strong>isIndirect: boolean</strong></code><br>Flags if the batch is utilizing compute-driven indirect drawing.</li>
+    <li><code><strong>indirectBuffer?: GPUBuffer</strong></code><br>The buffer containing the <code>IndirectDrawArgs</code>.</li>
+    <li><code><strong>sourceStorageBuffer?: GPUBuffer</strong></code><br>The raw un-culled data buffer read by the compute shader.</li>
+    <li><code><strong>computePipeline?: GPUComputePipeline</strong></code><br>The compute pipeline responsible for culling/processing.</li>
+    <li><code><strong>computeBindGroup?: GPUBindGroup</strong></code><br>The bind group used by the compute shader.</li>
+    <li><code><strong>customBindGroups: Record&lt;number, GPUBindGroup&gt;</strong></code><br>Custom bind groups mapped by their group index for the render pass.</li>
+    <li><code><strong>computeCustomBindGroups: Record&lt;number, GPUBindGroup&gt;</strong></code><br>Custom bind groups mapped by their group index for the compute pass.</li>
+</ul>
+
+<hr>
+
+<h2><code>Material</code> (Interface)</h2>
+<p>A pluggable interface for managing textures, samplers, or complex uniform bindings that can be attached to batches.</p>
+<ul>
+    <li><code><strong>applyToBatch(batch: RenderBatch, groupIndex?: number): GPUBindGroup</strong></code><br>Binds the material's resources to the specified batch and returns the generated WebGPU bind group.</li>
+    <li><code><strong>destroy(): void</strong></code><br>Cleans up the underlying WebGPU resources (textures, samplers) associated with this material.</li>
+</ul>
+
+<hr>
+
+<h2><code>EngineInitResult</code> (Interface)</h2>
+<p>The standard response returned when calling <code>await engine.init()</code>.</p>
+<ul>
+    <li><code><strong>success: boolean</strong></code><br>True if the WebGPU context was successfully requested and configured.</li>
+    <li><code><strong>enabledFeatures: ReadonlySet&lt;string&gt;</strong></code><br>A set of WebGPU feature strings successfully enabled on the device.</li>
+    <li><code><strong>error?: string</strong></code><br>Contains the error message if <code>success</code> is false.</li>
+</ul>

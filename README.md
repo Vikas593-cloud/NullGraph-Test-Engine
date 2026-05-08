@@ -96,10 +96,30 @@ Open your browser and navigate to:
 ```text
 http://127.0.0.1:8000
 ```
-# Test Engine
+---
 
-A high-performance WebGPU rendering engine focused on Data-Oriented Design (DOD), ECS-style memory layouts, GPU compute workflows, and advanced rendering experiments.
+## 📦 Asset Setup (Required)
 
+Some 3D models used in the demos are **not included** in this repository due to licensing restrictions.
+
+### Missing Assets
+
+| Asset | Source | License | Included? | Reason |
+|-------|--------|---------|-----------|--------|
+| Mixamo Characters/Animations | [mixamo.com](https://www.mixamo.com) | Adobe Royalty-Free | ❌ | License restriction |
+| Kenney Game Assets | [kenney.nl](https://kenney.nl) | CC0 | ❌ | File size |
+| PBR Textures | [polyhaven.com](https://polyhaven.com/textures) | CC0 | ❌ | File size (100MB+) |
+| Stanford Monkey | Public Domain | CC0 | ✅ Included | — |
+### How to Get Missing Assets
+
+1. **Mixamo Models** — Download characters and animations from [Mixamo](https://www.mixamo.com) (free Adobe account required)
+  - Place `.glb` files in: `public/assets/models/mixamo/`
+  - Download "X Bot", "Y Bot", or any character + animation you prefer
+
+2. **Kenney Assets** — Download from [kenney.nl/assets](https://kenney.nl/assets)
+  - Place files in: `public/assets/models/kenney/`
+
+### Expected Folder Structure
 ---
 
 ## Running the Project

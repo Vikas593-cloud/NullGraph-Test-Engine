@@ -109,8 +109,8 @@ export async function setupCRTEffect(engine: NullGraph, camera: Camera, getState
         // We hijack the ECS array to pass in simulation time!
         @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
-        @group(1) @binding(0) var screenTex: texture_2d<f32>;
-        @group(1) @binding(1) var screenSamp: sampler;
+        @group(1) @binding(1) var screenTex: texture_2d<f32>;
+        @group(1) @binding(0) var screenSamp: sampler;
 
         struct VertexOut {
             @builtin(position) pos: vec4<f32>,

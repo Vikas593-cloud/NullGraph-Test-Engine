@@ -1,0 +1,302 @@
+<blockquote>
+    <p>The <code>Primitives</code> class provides procedural mesh generation utilities for creating common geometric shapes compatible with NullGraph's <code>Geometry</code> and <code>VertexLayout</code> systems.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>Primitives</code> (Class)</h2>
+
+<p>A static utility class for generating prebuilt procedural geometry meshes.</p>
+
+<p>Each primitive dynamically adapts its vertex data output based on the provided <code>VertexLayout</code>, meaning only requested attributes are written into the vertex stream.</p>
+
+<hr>
+
+<h2>Supported Vertex Attributes</h2>
+
+<p>All primitive generators support the following attributes dynamically:</p>
+
+<ul>
+    <li><code>Position</code></li>
+    <li><code>Normal</code></li>
+    <li><code>UV</code></li>
+    <li><code>Color</code></li>
+</ul>
+
+<h3>Color Behavior</h3>
+
+<p>If the layout requests a <code>Color</code> attribute, generated vertices default to solid white:</p>
+
+<pre><code>[1.0, 1.0, 1.0, 1.0]</code></pre>
+
+<hr>
+
+<h2>Cube Generation</h2>
+
+<h3><code>createCube(layout, width, height, depth)</code></h3>
+
+<p>Generates a centered box mesh with flat-shaded faces.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>width</strong> (<code>number</code>): Cube width.</li>
+    <li><strong>height</strong> (<code>number</code>): Cube height.</li>
+    <li><strong>depth</strong> (<code>number</code>): Cube depth.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>24 vertices (4 unique vertices per face)</li>
+    <li>36 indices</li>
+    <li>6 faces</li>
+    <li>Flat normals per face</li>
+    <li>UV-mapped quads</li>
+</ul>
+
+<hr>
+
+<h2>Octahedron Generation</h2>
+
+<h3><code>createOctahedron(layout, width, height, depth)</code></h3>
+
+<p>Generates a flat-shaded octahedron composed of 8 triangular faces.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>width</strong> (<code>number</code>): Horizontal width.</li>
+    <li><strong>height</strong> (<code>number</code>): Vertical height.</li>
+    <li><strong>depth</strong> (<code>number</code>): Depth size.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>24 vertices</li>
+    <li>24 indices</li>
+    <li>8 triangular faces</li>
+    <li>Per-face flat normals</li>
+    <li>Basic triangle UV mapping</li>
+</ul>
+
+<hr>
+
+<h2>Plane Generation</h2>
+
+<h3><code>createPlane(layout, width, height)</code></h3>
+
+<p>Generates a flat quad centered at the origin on the XY plane.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>width</strong> (<code>number</code>): Plane width.</li>
+    <li><strong>height</strong> (<code>number</code>): Plane height.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>4 vertices</li>
+    <li>6 indices</li>
+    <li>2 triangles</li>
+    <li>Faces toward +Z</li>
+    <li>UV-mapped quad</li>
+</ul>
+
+<h3>Notes</h3>
+
+<ul>
+    <li>Default orientation lies on the XY plane.</li>
+    <li>Can easily be adapted into a ground plane by swapping Y/Z coordinates.</li>
+</ul>
+
+<hr>
+
+<h2>Pyramid Generation</h2>
+
+<h3><code>createPyramid(layout, width, height, depth)</code></h3>
+
+<p>Generates a pyramid mesh with a quad base and four triangular side faces.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>width</strong> (<code>number</code>): Pyramid width.</li>
+    <li><strong>height</strong> (<code>number</code>): Pyramid height.</li>
+    <li><strong>depth</strong> (<code>number</code>): Pyramid depth.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>16 vertices</li>
+    <li>18 indices</li>
+    <li>4 triangular side faces</li>
+    <li>1 quad base</li>
+    <li>Flat-shaded normals</li>
+</ul>
+
+<hr>
+
+<h2>Icosahedron Generation</h2>
+
+<h3><code>createIcosahedron(layout, radius)</code></h3>
+
+<p>Generates a flat-shaded icosahedron using the golden ratio construction method.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>radius</strong> (<code>number</code>): Radius of the generated shape.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>60 vertices</li>
+    <li>60 indices</li>
+    <li>20 triangular faces</li>
+    <li>Flat-shaded normals</li>
+</ul>
+
+<h3>Implementation Notes</h3>
+
+<ul>
+    <li>Uses duplicated vertices per face to preserve hard edges.</li>
+    <li>Based on normalized golden-ratio coordinates.</li>
+</ul>
+
+<hr>
+
+<h2>Sphere Generation</h2>
+
+<h3><code>createSphere(layout, radius, widthSegments, heightSegments)</code></h3>
+
+<p>Generates a UV sphere mesh using latitude/longitude segmentation.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>radius</strong> (<code>number</code>): Sphere radius.</li>
+    <li><strong>widthSegments</strong> (<code>number</code>): Horizontal segment count.</li>
+    <li><strong>heightSegments</strong> (<code>number</code>): Vertical segment count.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Minimum width segments: <code>3</code></li>
+    <li>Minimum height segments: <code>2</code></li>
+    <li>Generates smooth normals automatically.</li>
+    <li>Supports UV wrapping.</li>
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>Shared indexed vertices</li>
+    <li>Smooth shading</li>
+    <li>Two triangles per grid quad</li>
+</ul>
+
+<hr>
+
+<h2>Torus Generation</h2>
+
+<h3><code>createTorus(layout, radius, tubeRadius, radialSegments, tubularSegments)</code></h3>
+
+<p>Generates a torus (donut) mesh using parametric ring generation.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+    <li><strong>radius</strong> (<code>number</code>): Main ring radius.</li>
+    <li><strong>tubeRadius</strong> (<code>number</code>): Radius of the tube.</li>
+    <li><strong>radialSegments</strong> (<code>number</code>): Tube subdivision count.</li>
+    <li><strong>tubularSegments</strong> (<code>number</code>): Main ring subdivision count.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Minimum segment count: <code>3</code></li>
+    <li>Generates smooth normals.</li>
+    <li>Uses indexed triangle construction.</li>
+    <li>Supports UV wrapping around both axes.</li>
+</ul>
+
+<h3>Generated Geometry</h3>
+
+<ul>
+    <li>Shared indexed vertices</li>
+    <li>Two triangles per torus quad section</li>
+    <li>Returns a <code>Uint32Array</code> index buffer</li>
+</ul>
+
+<hr>
+
+<h2>Normal Generation</h2>
+
+<p>Several primitives compute face normals dynamically using the cross product of triangle edges.</p>
+
+<p>The generated normal is normalized before storage:</p>
+
+\vec{n}=\frac{(v_1-v_0)\times(v_2-v_0)}{\left|(v_1-v_0)\times(v_2-v_0)\right|}
+
+<hr>
+
+<h2>Common Characteristics</h2>
+
+<ul>
+    <li>All primitives are centered at the origin <code>(0,0,0)</code>.</li>
+    <li>All geometry is generated using Counter-Clockwise (CCW) winding order.</li>
+    <li>Layouts dynamically control which vertex attributes are emitted.</li>
+    <li>Generated meshes return fully constructed <code>Geometry</code> instances.</li>
+</ul>
+
+<hr>
+
+<h2>Usage Example</h2>
+
+<pre><code>const cube = Primitives.createCube(
+    StandardLayout,
+    1,
+    1,
+    1
+);
+
+cube.upload(engine);
+</code></pre>
+
+<p>The resulting geometry can be bound directly into a render batch or rendering pipeline.</p>

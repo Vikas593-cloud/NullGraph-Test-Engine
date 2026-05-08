@@ -12,6 +12,9 @@
     --accent-color: #00ffcc;
     --bg-dark: rgba(12, 12, 16, 0.85);
     --border-light: rgba(255, 255, 255, 0.08);
+    --gpu-color: #00ffcc;
+    --cpu-color: #ffcc00;
+
 }
 
 @media (max-width: 1024px) {

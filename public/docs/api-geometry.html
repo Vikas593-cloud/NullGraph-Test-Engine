@@ -1,0 +1,324 @@
+<blockquote>
+    <p>The <code>Geometry</code> and <code>GeometryBuilder</code> systems provide CPU-side mesh construction and GPU upload utilities for NullGraph. Together they define vertex/index data, GPU buffer ownership, and procedural mesh generation workflows.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>Geometry</code> (Class)</h2>
+
+<p>Represents a renderable mesh containing vertex data, index data, layout information, and optional uploaded GPU buffers.</p>
+
+<p>The class acts as a bridge between CPU-side mesh data and GPU-side WebGPU buffers.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new Geometry(layout, vertices, indices)</code></h3>
+
+<p>Creates a new geometry container.</p>
+
+<ul>
+    <li>
+        <strong>layout</strong> (<code>VertexLayout</code>):<br>
+        The vertex memory layout describing how the vertex buffer is structured.
+    </li>
+
+    ```
+    <li>
+        <strong>vertices</strong> (<code>Float32Array</code>):<br>
+        Flat interleaved vertex data array.
+    </li>
+
+    <li>
+        <strong>indices</strong> (<code>Uint16Array | Uint32Array</code>):<br>
+        Index buffer data defining triangle connectivity.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>layout: VertexLayout</strong></code><br>
+        The vertex layout describing the structure of each vertex.
+    </li>
+
+    ```
+    <li>
+        <code><strong>vertices: Float32Array</strong></code><br>
+        Raw CPU-side vertex buffer data.
+    </li>
+
+    <li>
+        <code><strong>indices: Uint16Array | Uint32Array</strong></code><br>
+        Raw CPU-side index buffer data.
+    </li>
+
+    <li>
+        <code><strong>vertexBuffer: GPUBuffer | null</strong></code><br>
+        The uploaded GPU vertex buffer.<br>
+        <code>null</code> until <code>upload()</code> is called.
+    </li>
+
+    <li>
+        <code><strong>indexBuffer: GPUBuffer | null</strong></code><br>
+        The uploaded GPU index buffer.<br>
+        <code>null</code> until <code>upload()</code> is called.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>GPU Upload</h2>
+
+<h3><code>upload(engine)</code></h3>
+
+<p>Uploads the geometry data to GPU memory using the engine's <code>BufferManager</code>.</p>
+
+<ul>
+    <li>
+        <strong>engine</strong> (<code>NullGraph</code>):<br>
+        The engine instance providing access to GPU buffer utilities.
+    </li>
+
+    ```
+    <li><strong>Returns</strong>: <code>void</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Creates a GPU vertex buffer from the internal vertex data.</li>
+    <li>Creates a GPU index buffer from the internal index data.</li>
+    <li>Stores the generated buffers internally for rendering use.</li>
+</ul>
+
+<hr>
+
+<h2>Resource Cleanup</h2>
+
+<h3><code>destroy()</code></h3>
+
+<p>Destroys the GPU buffers associated with this geometry and releases their references.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Calls <code>GPUBuffer.destroy()</code> on both vertex and index buffers.</li>
+    <li>Safely resets internal references to <code>null</code>.</li>
+    <li>Prevents accidental reuse of destroyed GPU resources.</li>
+</ul>
+
+<hr>
+
+<h2><code>VertexData</code> (Interface)</h2>
+
+<p>Defines a single vertex entry used by <code>GeometryBuilder</code>.</p>
+
+<h3>Properties</h3>
+
+<ul>
+    <li>
+        <code><strong>position: [number, number, number]</strong></code><br>
+        Required vertex position.
+    </li>
+
+    ```
+    <li>
+        <code><strong>normal?: [number, number, number]</strong></code><br>
+        Optional vertex normal vector.
+    </li>
+
+    <li>
+        <code><strong>uv?: [number, number]</strong></code><br>
+        Optional texture coordinate.
+    </li>
+
+    <li>
+        <code><strong>color?: [number, number, number, number]</strong></code><br>
+        Optional vertex color (RGBA).
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>GeometryBuilder</code> (Class)</h2>
+
+<p>A lightweight procedural mesh construction utility for generating interleaved vertex and index data arrays.</p>
+
+<p>Useful for dynamically building primitive meshes, procedural terrain, debug geometry, or imported mesh data.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new GeometryBuilder(layout)</code></h3>
+
+<p>Creates a new geometry builder using the specified vertex layout.</p>
+
+<ul>
+    <li>
+        <strong>layout</strong> (<code>any</code>):<br>
+        The target vertex layout definition used during mesh generation.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>vertices: number[]</strong></code><br>
+        Dynamic array storing packed vertex data.
+    </li>
+
+    ```
+    <li>
+        <code><strong>indices: number[]</strong></code><br>
+        Dynamic array storing generated indices.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Vertex Construction</h2>
+
+<h3><code>addVertex(data)</code></h3>
+
+<p>Adds a vertex to the mesh and returns its generated index.</p>
+
+<ul>
+    <li>
+        <strong>data</strong> (<code>VertexData</code>):<br>
+        The vertex attributes to append.
+    </li>
+
+    ```
+    <li><strong>Returns</strong>: <code>number</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Appends position data to the internal vertex array.</li>
+    <li>Appends normals if provided.</li>
+    <li>Uses a default normal of <code>(0, 1, 0)</code> if omitted.</li>
+    <li>Appends UV coordinates if provided.</li>
+    <li>Returns the generated vertex index.</li>
+</ul>
+
+<h3>Notes</h3>
+
+<ul>
+    <li>The current implementation assumes a layout compatible with:
+        <ul>
+            <li>Position</li>
+            <li>Normal</li>
+            <li>UV</li>
+        </ul>
+    </li>
+
+    ```
+    <li>Color handling exists in the interface but is not currently written into the vertex stream.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Triangle Construction</h2>
+
+<h3><code>addTriangle(a, b, c)</code></h3>
+
+<p>Adds a triangle face to the mesh index buffer.</p>
+
+<ul>
+    <li><strong>a</strong> (<code>number</code>): First vertex index.</li>
+    <li><strong>b</strong> (<code>number</code>): Second vertex index.</li>
+    <li><strong>c</strong> (<code>number</code>): Third vertex index.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>void</code></li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Mesh Finalization</h2>
+
+<h3><code>build()</code></h3>
+
+<p>Converts the accumulated vertex/index arrays into typed arrays ready for engine usage.</p>
+
+<ul>
+    <li><strong>Returns</strong>:
+        <pre><code>{
+    v: Float32Array,
+    i: Uint16Array,
+    vertexBuffer: Float32Array,
+    indexBuffer: Uint16Array,
+    layout: any
+}
+</code></pre>
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Creates GPU-ready typed arrays from accumulated mesh data.</li>
+    <li>Returns both shorthand aliases (<code>v</code>, <code>i</code>) and compatibility fields (<code>vertexBuffer</code>, <code>indexBuffer</code>).</li>
+    <li>Preserves the original layout reference.</li>
+</ul>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>const builder = new GeometryBuilder(StandardLayout);
+
+const a = builder.addVertex({
+    position: [0, 0, 0],
+    normal: [0, 1, 0],
+    uv: [0, 0]
+});
+
+const b = builder.addVertex({
+    position: [1, 0, 0],
+    normal: [0, 1, 0],
+    uv: [1, 0]
+});
+
+const c = builder.addVertex({
+    position: [0, 1, 0],
+    normal: [0, 1, 0],
+    uv: [0, 1]
+});
+
+builder.addTriangle(a, b, c);
+
+const meshData = builder.build();
+</code></pre>
+
+<p>The resulting typed arrays can then be passed into a <code>Geometry</code> instance and uploaded to the GPU.</p>

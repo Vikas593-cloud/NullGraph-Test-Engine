@@ -5,11 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NullGraph Engine</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="bundle.css">
+    <link rel="stylesheet" href="main.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            startup: {
+                typeset: false // We will trigger it manually in TypeScript!
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
 </head>
 <body>
 <canvas id="gpuCanvas"></canvas>
 
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">INITIALIZING <span class="neon">SCENE...</span></div>
+</div>
+
+<!-- =========================================
+     LEFT SIDEBAR
+========================================= -->
+<!-- =========================================
+     LEFT SIDEBAR
+========================================= -->
 <aside id="sidebar">
     <button id="sidebar-toggle" aria-label="Toggle Sidebar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
@@ -18,9 +43,71 @@
     <div class="sidebar-scroll-area">
         <div class="nav-header">NULL<span>GRAPH</span></div>
 
-        <div class="nav-section">Documentation</div>
+        <!--  NullGraph v1.0.0 Section -->
+        <div class="nav-section">NullGraph v1.0.0</div>
+
+        <!-- Standalone Introduction -->
         <div class="nav-item" data-target="intro">Introduction</div>
-        <div class="nav-item" data-target="getting-started">Getting Started</div>
+        <!-- Collapsible Core Concepts -->
+        <details class="nav-group">
+            <summary class="nav-group-title">Core Concepts</summary>
+            <div class="nav-group-content">
+                <div class="nav-item sub-nav" data-target="concept-architecture">Engine Architecture</div>
+            </div>
+        </details>
+
+        <!-- Collapsible Documentation -->
+        <details class="nav-group">
+            <summary class="nav-group-title">API Reference</summary>
+            <div class="nav-group-content">
+
+                <!-- CORE ENGINE -->
+                <div class="nav-section" style="margin: 15px 0 5px 0;">Core Engine</div>
+                <div class="nav-item sub-nav" data-target="api-nullgraph">NullGraph Context</div>
+                <div class="nav-item sub-nav" data-target="api-webgpu-context">WebGPUContext</div>
+                <div class="nav-item sub-nav" data-target="api-camera">Camera</div>
+                <div class="nav-item sub-nav" data-target="api-render-pipeline">RenderPipeline & Pass</div>
+                <div class="nav-item sub-nav" data-target="api-buffers">Batch & Buffer Managers</div>
+                <div class="nav-item sub-nav" data-target="api-textures">TextureManager</div>
+
+                <!-- GEOMETRY -->
+                <div class="nav-section" style="margin: 15px 0 5px 0;">Geometry API</div>
+                <div class="nav-item sub-nav" data-target="api-primitives">Primitives</div>
+                <div class="nav-item sub-nav" data-target="api-geometry">Geometry & Builder</div>
+                <div class="nav-item sub-nav" data-target="api-dynamic-geom">DynamicGeometryManager</div>
+                <div class="nav-item sub-nav" data-target="api-megabuffer">MegaBufferBuilder</div>
+                <div class="nav-item sub-nav" data-target="api-vertex-layout">VertexLayout</div>
+
+                <!-- MATERIALS -->
+                <div class="nav-section" style="margin: 15px 0 5px 0;">Materials & Shaders</div>
+                <div class="nav-item sub-nav" data-target="api-pbr-material">StandardPBRMaterial</div>
+                <div class="nav-item sub-nav" data-target="api-shader-builder">ShaderBuilder</div>
+
+                <!-- LOADERS & ANIMATION -->
+                <div class="nav-section" style="margin: 15px 0 5px 0;">Loaders & Animation</div>
+                <div class="nav-item sub-nav" data-target="api-glb-parser">GLBParser</div>
+                <div class="nav-item sub-nav" data-target="api-animator">Animator</div>
+                <div class="nav-item sub-nav" data-target="api-skeleton">SkeletonManager</div>
+                <div class="nav-item sub-nav" data-target="api-mathutils">MathUtils</div>
+
+                <!-- TOOLS & DEBUGGING -->
+                <div class="nav-section" style="margin: 15px 0 5px 0;">Tools & Profiling</div>
+                <div class="nav-item sub-nav" data-target="api-gpu-profiler">GPUProfiler</div>
+                <div class="nav-item sub-nav" data-target="api-performance-widget">PerformanceWidget</div>
+
+            </div>
+        </details>
+
+
+        <!-- Collapsible Tutorials -->
+        <details class="nav-group">
+            <summary class="nav-group-title">Tutorials</summary>
+            <div class="nav-group-content">
+                <div class="nav-item sub-nav" data-target="tutorial-hello-world">Hello World</div>
+            </div>
+        </details>
+
+
 
         <div class="nav-section">WebGPU Experiments</div>
         <div class="nav-item sub-nav" data-demo="demo-morphogenesis-diffusion">Morphogenesis-Alan Turing[1952]</div>
@@ -45,17 +132,26 @@
         <div class="nav-item sub-nav" data-demo="demo-aosoa">AoSoA (Chunked SoA)</div>
         <div class="nav-item sub-nav" data-demo="demo-oop">OOP (Scene Graph)</div>
 
-<!--        <div class="nav-section">Animation Examples</div>-->
-<!--        <div class="nav-item sub-nav" data-demo="anim-cpu">CPU Data Upload</div>-->
-<!--        <div class="nav-item sub-nav" data-demo="anim-gpu">GPU Shader Time</div>-->
-
         <div class="nav-section">3D Geometry Examples</div>
         <div class="nav-item sub-nav" data-demo="demo-3d-cube">3D Geometry (Cube)</div>
         <div class="nav-item sub-nav active" data-demo="demo-3d-cube-ambient-light">3D Geometry [+Light]</div>
         <div class="nav-item sub-nav" data-demo="demo-gpu-culling">GPU Culling (Indirect)</div>
         <div class="nav-item sub-nav" data-demo="demo-gpu-lod">GPU Level of Detail</div>
         <div class="nav-item sub-nav" data-demo="demo-mega-buffer">GPU Mega Buffer</div>
-<!--        <div class="nav-item sub-nav" data-demo="demo-forward+-lighting">Forward+ Lighting(Cyberpunk 2077)</div>-->
+
+        <div class="nav-section">3D Model Examples</div>
+        <div class="nav-item sub-nav" data-demo="demo-glb-loader">3D Monkey Model (GLB)</div>
+        <div class="nav-item sub-nav" data-demo="demo-epic-swarm">Epic Swarm</div>
+
+        <div class="nav-section">3D PBR Materials Examples</div>
+        <div class="nav-item sub-nav" data-demo="demo-pbr-test">Rusty Metal Monkey</div>
+        <div class="nav-item sub-nav" data-demo="demo-mixamo-model">Mixamo Model</div>
+        <div class="nav-item sub-nav" data-demo="demo-aetherial-monkey-flow">Aetherial Monkey Flow</div>
+
+        <div class="nav-section">3D Animation Examples</div>
+        <div class="nav-item sub-nav" data-demo="demo-simple-butterfly">Simple Butterfly</div>
+        <div class="nav-item sub-nav" data-demo="demo-animation-postprocessing">Animation with Post Processing</div>
+
         <div class="nav-section">Post Processing Examples</div>
         <div class="nav-item sub-nav" data-demo="demo-crt-effect">CRT Effect</div>
         <div class="nav-item sub-nav" data-demo="demo-hologram-effect">Hologram Effect</div>
@@ -67,9 +163,14 @@
         <div class="nav-item sub-nav" data-demo="demo-spacefleet">Space Fleet</div>
         <div class="nav-item sub-nav" data-demo="demo-fireworks">Fireworks Simulation</div>
 
-
+        <div class="nav-section">Axion Engine Loop</div>
+        <div class="nav-item sub-nav" data-demo="demo-axion-engine-loop">Engine Loop</div>
+    </div>
 </aside>
 
+<!-- =========================================
+     DOCUMENTATION OVERLAY
+========================================= -->
 <main id="doc-overlay" class="hidden">
     <button id="close-docs" aria-label="Close Documentation">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -78,39 +179,101 @@
         </svg>
     </button>
 
-    <div id="doc-content">
+    <div id="doc-content" class="doc-content">
         <h1>Engine Documentation</h1>
         <p>Select a topic from the sidebar to view details.</p>
     </div>
 </main>
+<!-- =========================================
+     RIGHT CONTROL PANEL
+========================================= -->
 <aside id="control-panel">
     <button id="right-panel-toggle" aria-label="Toggle Control Panel">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </button>
 
+    <!-- The entire panel is one big scroll area again -->
     <div class="right-panel-scroll-area">
-        <div class="panel-header">Engine Controls</div>
 
-        <div class="control-group">
-            <label for="amp-slider">Wave Amplitude: <span id="amp-val" class="highlight">2.0</span></label>
-            <input type="range" id="amp-slider" min="0" max="10" step="0.5" value="2.0">
-        </div>
+        <!-- TOP: Collapsible Engine Controls -->
+        <details id="engine-controls-container" class="info-section engine-accordion" open>
+            <summary>Engine Controls</summary>
 
-        <hr class="panel-divider">
+            <div class="section-content">
+                <div class="control-group">
+                    <label for="speed-slider">Simulation Speed: <span id="speed-val" class="highlight">1.0x</span></label>
+                    <input type="range" id="speed-slider" min="0.1" max="2.5" step="0.1" value="1.0">
+                </div>
 
-        <div id="demo-info-container">
+                <div class="control-group">
+                    <label for="amp-slider">Wave Amplitude: <span id="amp-val" class="highlight">2.0</span></label>
+                    <input type="range" id="amp-slider" min="0" max="10" step="0.5" value="2.0">
+                </div>
+
+                <hr class="panel-divider" style="margin: 15px 0;">
+
+                <div class="control-group">
+                    <label>Aura Red: <span id="r-val" class="highlight" style="color: #ff6b6b;">30.0</span></label>
+                    <input type="range" id="r-slider" min="0" max="100" step="0.1" value="30.0">
+                </div>
+                <div class="control-group">
+                    <label>Aura Green: <span id="g-val" class="highlight" style="color: #51cf66;">0.0</span></label>
+                    <input type="range" id="g-slider" min="0" max="100" step="0.1" value="0.0">
+                </div>
+                <div class="control-group">
+                    <label>Aura Blue: <span id="b-val" class="highlight" style="color: #339af0;">5.0</span></label>
+                    <input type="range" id="b-slider" min="0" max="100" step="0.1" value="5.0">
+                </div>
+
+                <div class="control-group">
+                    <label for="feed-slider">Feed Rate: <span id="feed-val" class="highlight">0.055</span></label>
+                    <input type="range" id="feed-slider" min="0.010" max="0.100" step="0.001" value="0.055">
+                </div>
+
+                <div class="control-group">
+                    <label for="kill-slider">Kill Rate: <span id="kill-val" class="highlight">0.062</span></label>
+                    <input type="range" id="kill-slider" min="0.010" max="0.100" step="0.001" value="0.062">
+                </div>
+
+                <div class="control-group">
+                    <label>Base Color (A)</label>
+                    <input type="color" id="base-color" value="#050d26">
+                </div>
+                <div class="control-group">
+                    <label>Peak Color (B)</label>
+                    <input type="color" id="peak-color" value="#33e6cc">
+                </div>
+
+                <div class="control-group">
+                    <button id="btn-restart" style="width: 100%; padding: 10px; background: #33e6cc; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;">Restart Simulation</button>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0;">
+                    <label for="pattern-preset">Pattern Preset</label>
+                    <select id="pattern-preset" style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 4px; outline: none; cursor: pointer; font-family: inherit;">
+                        <option value="custom">Custom</option>
+                        <option value="coral" selected>Coral Maze</option>
+                        <option value="mitosis">Mitosis (Dividing)</option>
+                        <option value="chaos">Boiling Chaos</option>
+                        <option value="pulsating">Pulsating Spots</option>
+                        <option value="holes">U-Skate Holes</option>
+                        <option value="worms">Static Worms</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <!-- BOTTOM: Demo Documentation / Info -->
+        <div id="demo-info-container" style="margin-top: 30px;">
             <h3 id="info-title">Select a Demo</h3>
             <div id="info-concepts" class="concept-tags"></div>
-
             <div id="info-sections-wrapper"></div>
         </div>
+
     </div>
 </aside>
-</aside>
 
-<div id="dashboard">
-    <div class="stat">FPS: <span id="ui-fps" class="neon">60</span></div>
-</div>
 
-<script type="module" src="bundle.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>

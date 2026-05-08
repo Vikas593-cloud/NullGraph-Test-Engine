@@ -1,0 +1,41 @@
+<blockquote>
+    <p>The <code>Camera</code> class handles the mathematical generation of the 3D view and perspective matrices. It is designed for zero-copy WebGPU integration, packing the matrix and camera position directly into a contiguous <code>Float32Array</code>.</p>
+</blockquote>
+
+<hr>
+
+<h2>Public Properties</h2>
+<ul>
+    <li><code><strong>projectionMatrix: mat4</strong></code><br>The computed perspective projection matrix.</li>
+    <li><code><strong>viewMatrix: mat4</strong></code><br>The computed view matrix, representing the camera's position and orientation in the world.</li>
+    <li><code><strong>viewProjectionMatrix: mat4</strong></code><br>The combined matrix (<code>Projection * View</code>). This is the primary matrix used in vertex shaders to transform world coordinates to clip space.</li>
+    <li><code><strong>bufferData: Float32Array</strong></code><br>A pre-allocated 20-float array (80 bytes). It contains the <code>viewProjectionMatrix</code> (indices 0-15) and the camera's <code>eye</code> position (indices 16-18), perfectly aligned for direct WebGPU Uniform Buffer upload.</li>
+</ul>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new Camera(fovDegrees, aspect, near, far)</code></h3>
+<p>Initializes the camera and computes the static perspective projection matrix.</p>
+<ul>
+    <li><strong>fovDegrees</strong> (<code>number</code>): The Field of View in degrees (e.g., 45 or 60).</li>
+    <li><strong>aspect</strong> (<code>number</code>): The aspect ratio of the canvas (<code>width / height</code>).</li>
+    <li><strong>near</strong> (<code>number</code>): The near clipping plane distance.</li>
+    <li><strong>far</strong> (<code>number</code>): The far clipping plane distance.</li>
+</ul>
+
+<hr>
+
+<h2>Methods</h2>
+
+<h3><code>updateView(eye, target, up?)</code></h3>
+<p>Updates the camera's position and look target. This method recalculates the view matrix, updates the combined view-projection matrix, and writes the updated data directly into the <code>bufferData</code> array for GPU streaming.</p>
+<ul>
+    <li><strong>eye</strong> (<code>vec3</code>): The 3D position of the camera in world space.</li>
+    <li><strong>target</strong> (<code>vec3</code>): The 3D point the camera is looking at.</li>
+    <li><strong>up</strong> (<code>vec3</code>): The upward direction vector. Defaults to <code>[0, 1, 0]</code> (Y-up).</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<p><em><strong>Implementation Note:</strong> After calling <code>updateView</code>, you typically pass this camera instance to <code>engine.updateCamera(camera)</code> to write the <code>bufferData</code> to the WebGPU Uniform Buffer.</em></p>

@@ -1,0 +1,233 @@
+<blockquote>
+    <p>The <code>VertexLayout</code> system defines how vertex data is structured in memory and translated into WebGPU-compatible vertex buffer layouts. It provides reusable attribute presets and automatic stride calculation for rendering pipelines.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>VertexAttribute</code> (Enum)</h2>
+
+<p>Defines the supported vertex attributes that can be included in a vertex layout.</p>
+
+<h3>Values</h3>
+
+<ul>
+    <li>
+        <code><strong>Position</strong></code><br>
+        3D position attribute.<br>
+        Format: <code>float32x3</code><br>
+        Size: <code>12 bytes</code>
+    </li>
+
+    ```
+    <li>
+        <code><strong>Normal</strong></code><br>
+        Vertex normal vector.<br>
+        Format: <code>float32x3</code><br>
+        Size: <code>12 bytes</code>
+    </li>
+
+    <li>
+        <code><strong>UV</strong></code><br>
+        Texture coordinate attribute.<br>
+        Format: <code>float32x2</code><br>
+        Size: <code>8 bytes</code>
+    </li>
+
+    <li>
+        <code><strong>Color</strong></code><br>
+        Vertex color attribute.<br>
+        Format: <code>float32x4</code><br>
+        Size: <code>16 bytes</code>
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>VertexLayout</code> (Class)</h2>
+
+<p>Represents a complete vertex buffer memory layout used when configuring WebGPU render pipelines.</p>
+
+<p>The class automatically calculates byte stride, float stride, and generates the corresponding <code>GPUVertexBufferLayout</code> descriptor.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new VertexLayout(attributes)</code></h3>
+
+<p>Creates a new vertex layout using the provided ordered attribute list.</p>
+
+<ul>
+    <li>
+        <strong>attributes</strong> (<code>VertexAttribute[]</code>):<br>
+        Ordered list of vertex attributes defining the memory layout.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Automatically calculates total vertex stride in bytes and floats.</li>
+    <li>Attribute order determines:
+        <ul>
+            <li>Memory offsets</li>
+            <li>Shader locations</li>
+            <li>Final vertex layout structure</li>
+        </ul>
+    </li>
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>attributes: VertexAttribute[]</strong></code><br>
+        Ordered list of attributes included in this layout.
+    </li>
+
+    ```
+    <li>
+        <code><strong>strideBytes: number</strong></code><br>
+        Total vertex size in bytes.
+    </li>
+
+    <li>
+        <code><strong>strideFloats: number</strong></code><br>
+        Total vertex size expressed as 32-bit floats.<br>
+        Useful for engine-side buffer allocation and CPU-side packing logic.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>WebGPU Descriptor Generation</h2>
+
+<h3><code>getWebGPUDescriptor()</code></h3>
+
+<p>Generates the exact <code>GPUVertexBufferLayout[]</code> descriptor required by <code>device.createRenderPipeline()</code>.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>GPUVertexBufferLayout[]</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Automatically assigns sequential shader locations starting at <code>0</code>.</li>
+    <li>Calculates byte offsets for each attribute.</li>
+    <li>Maps engine attributes to their matching WebGPU formats.</li>
+    <li>Produces a single interleaved vertex buffer layout.</li>
+</ul>
+
+<h3>Generated Attribute Mapping</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Attribute</th>
+        <th>GPU Format</th>
+        <th>Byte Size</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>Position</code></td>
+        <td><code>float32x3</code></td>
+        <td><code>12</code></td>
+    </tr>
+    <tr>
+        <td><code>Normal</code></td>
+        <td><code>float32x3</code></td>
+        <td><code>12</code></td>
+    </tr>
+    <tr>
+        <td><code>UV</code></td>
+        <td><code>float32x2</code></td>
+        <td><code>8</code></td>
+    </tr>
+    <tr>
+        <td><code>Color</code></td>
+        <td><code>float32x4</code></td>
+        <td><code>16</code></td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Built-in Layout Presets</h2>
+
+<h3><code>CompleteLayout</code></h3>
+
+<p>A fully featured layout containing:</p>
+
+<ul>
+    <li><code>Position</code></li>
+    <li><code>Normal</code></li>
+    <li><code>UV</code></li>
+    <li><code>Color</code></li>
+</ul>
+
+<h3>Structure</h3>
+
+<ul>
+    <li><strong>Total Stride</strong>: <code>48 bytes</code></li>
+    <li><strong>Total Floats</strong>: <code>12</code></li>
+</ul>
+
+<hr>
+
+<h3><code>StandardLayout</code></h3>
+
+<p>A standard mesh layout containing:</p>
+
+<ul>
+    <li><code>Position</code></li>
+    <li><code>Normal</code></li>
+    <li><code>UV</code></li>
+</ul>
+
+<h3>Structure</h3>
+
+<ul>
+    <li><strong>Total Stride</strong>: <code>32 bytes</code></li>
+    <li><strong>Total Floats</strong>: <code>8</code></li>
+</ul>
+
+<hr>
+
+<h3><code>PositionOnlyLayout</code></h3>
+
+<p>A minimal layout containing only vertex positions.</p>
+
+<ul>
+    <li><code>Position</code></li>
+</ul>
+
+<h3>Structure</h3>
+
+<ul>
+    <li><strong>Total Stride</strong>: <code>12 bytes</code></li>
+    <li><strong>Total Floats</strong>: <code>3</code></li>
+</ul>
+
+<hr>
+
+<h2>Usage Example</h2>
+
+<pre><code>const layout = new VertexLayout([
+    VertexAttribute.Position,
+    VertexAttribute.Normal,
+    VertexAttribute.UV
+]);
+
+const descriptor = layout.getWebGPUDescriptor();
+</code></pre>
+
+<p>The generated descriptor can then be passed directly into a WebGPU render pipeline configuration.</p>

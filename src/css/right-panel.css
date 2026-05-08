@@ -13,9 +13,7 @@
     color: #fff;
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
     transition: transform var(--transition-speed) cubic-bezier(0.77, 0, 0.175, 1);
-    overflow: visible;
 }
-
 #control-panel.collapsed {
     transform: translateX(100%);
 }
@@ -25,9 +23,8 @@
     width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 90px 24px 30px 24px;
+    padding: 90px 24px 40px 24px;
 }
-
 #right-panel-toggle {
     position: absolute;
     top: 24px;
@@ -208,3 +205,29 @@
     font-size: 0.75rem;
 }
 
+/* Make Display Math Scrollable Horizontally */
+mjx-container[display="true"] {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    padding-bottom: 12px; /* Give the scrollbar some breathing room */
+}
+
+/* Custom Scrollbar specifically for the math blocks */
+mjx-container[display="true"]::-webkit-scrollbar {
+    height: 6px;
+}
+
+mjx-container[display="true"]::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+mjx-container[display="true"]::-webkit-scrollbar-thumb {
+    background: rgba(51, 230, 204, 0.4); /* Your neon cyan */
+    border-radius: 4px;
+}
+
+mjx-container[display="true"]::-webkit-scrollbar-thumb:hover {
+    background: rgba(51, 230, 204, 0.8);
+}

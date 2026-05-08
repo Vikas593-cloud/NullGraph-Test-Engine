@@ -98,8 +98,8 @@ export async function setupBloomEffect(engine: NullGraph, camera: Camera, getSta
         @group(0) @binding(0) var<uniform> camera: Camera;
         @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
-        @group(1) @binding(0) var sceneTex: texture_2d<f32>;
-        @group(1) @binding(1) var samp: sampler;
+        @group(1) @binding(1) var sceneTex: texture_2d<f32>;
+        @group(1) @binding(0) var samp: sampler;
 
         struct VertexOut {
             @builtin(position) pos: vec4<f32>,

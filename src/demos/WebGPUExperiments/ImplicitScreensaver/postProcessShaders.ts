@@ -3,8 +3,8 @@ export const anamorphicDispersionPostProcess = `
     @group(0) @binding(0) var<uniform> camera: Camera;
     @group(0) @binding(1) var<storage, read> ecs: array<f32>; // Contains time at index 0
 
-    @group(1) @binding(0) var screenTex: texture_2d<f32>;
-    @group(1) @binding(1) var screenSamp: sampler;
+    @group(1) @binding(1) var screenTex: texture_2d<f32>;
+    @group(1) @binding(0) var screenSamp: sampler;
 
     struct VertexOut {
         @builtin(position) pos: vec4<f32>,

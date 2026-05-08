@@ -1,0 +1,274 @@
+<blockquote>
+    <p>The <code>MegabufferBuilder</code> class combines multiple meshes into a single large vertex and index buffer ("Megabuffer") for efficient GPU rendering, batching, and indirect draw workflows.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>MeshOffset</code> (Interface)</h2>
+
+<p>Describes where a mesh resides inside the combined megabuffer.</p>
+
+<h3>Properties</h3>
+
+<ul>
+    <li>
+        <code><strong>indexCount: number</strong></code><br>
+        Total number of indices belonging to the mesh.
+    </li>
+
+    ```
+    <li>
+        <code><strong>firstIndex: number</strong></code><br>
+        Starting index offset inside the global index buffer.
+    </li>
+
+    <li>
+        <code><strong>baseVertex: number</strong></code><br>
+        Starting vertex offset inside the global vertex buffer.
+    </li>
+
+    <li>
+        <code><strong>meshID: number</strong></code><br>
+        Automatically assigned unique mesh identifier.<br>
+        Useful for GPU-driven rendering and compute workflows.
+    </li>
+
+    <li>
+        <code><strong>vertexCount?: number</strong></code><br>
+        Optional vertex count metadata for the mesh.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>MegabufferBuilder</code> (Class)</h2>
+
+<p>A utility for merging multiple independent meshes into one contiguous vertex/index buffer pair.</p>
+
+<p>This approach minimizes GPU state changes and enables:</p>
+
+<ul>
+    <li>Batch rendering</li>
+    <li>Indirect drawing</li>
+    <li>GPU-driven rendering</li>
+    <li>Mesh streaming systems</li>
+    <li>Single-buffer scene uploads</li>
+</ul>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new MegabufferBuilder(vertexStrideFloats?)</code></h3>
+
+<p>Creates a new megabuffer builder.</p>
+
+<ul>
+    <li>
+        <strong>vertexStrideFloats</strong> (<code>number</code>):<br>
+        Number of 32-bit floats that make up a single vertex.<br>
+        Defaults to <code>6</code>.
+    </li>
+</ul>
+
+<h3>Example</h3>
+
+<pre><code>// Position + Normal
+const builder = new MegabufferBuilder(6);
+
+// Position + Normal + UV
+const builder = new MegabufferBuilder(8);
+</code></pre>
+
+<hr>
+
+<h2>Mesh Addition</h2>
+
+<h3><code>addMesh(name, meshVertices, meshIndices)</code></h3>
+
+<p>Adds a mesh into the megabuffer and returns its calculated offsets.</p>
+
+<ul>
+    <li>
+        <strong>name</strong> (<code>string</code>):<br>
+        Unique mesh identifier used for lookup.
+    </li>
+
+    ```
+    <li>
+        <strong>meshVertices</strong> (<code>Float32Array | number[]</code>):<br>
+        Flat interleaved vertex data.
+    </li>
+
+    <li>
+        <strong>meshIndices</strong> (<code>Uint16Array | number[]</code>):<br>
+        Mesh index data.
+    </li>
+
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Appends incoming vertex data into the master vertex array.</li>
+    <li>Appends incoming index data into the master index array.</li>
+    <li>Automatically calculates:
+        <ul>
+            <li><code>baseVertex</code></li>
+            <li><code>firstIndex</code></li>
+            <li><code>indexCount</code></li>
+        </ul>
+    </li>
+
+    ```
+    <li>Assigns an auto-incrementing <code>meshID</code>.</li>
+    <li>Stores mesh offsets internally for future lookup.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Megabuffer Finalization</h2>
+
+<h3><code>build()</code></h3>
+
+<p>Builds the final combined typed arrays suitable for GPU upload.</p>
+
+<ul>
+    <li><strong>Returns</strong>:
+        <pre><code>{
+    megaVertices: Float32Array,
+    megaIndices: Uint16Array | Uint32Array,
+    indexFormat: GPUIndexFormat
+}
+</code></pre>
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Converts accumulated arrays into GPU-ready typed arrays.</li>
+    <li>Automatically selects the correct index format based on vertex count.</li>
+    <li>Uses <code>Uint32Array</code> when vertex count exceeds WebGPU's 16-bit limit.</li>
+</ul>
+
+<h3>Index Format Selection</h3>
+
+<p>The builder automatically switches index formats using the following logic:</p>
+
+\text{Use Uint32 if TotalVertices} > 65535
+
+<ul>
+    <li><code>Uint16Array</code> → Up to 65,535 vertices</li>
+    <li><code>Uint32Array</code> → Larger meshes</li>
+</ul>
+
+<hr>
+
+<h2>Offset Lookup</h2>
+
+<h3><code>getOffset(name)</code></h3>
+
+<p>Retrieves the stored offset information for a previously added mesh.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>): Mesh identifier.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Looks up the mesh offset by name.</li>
+    <li>Throws an error if the mesh does not exist.</li>
+</ul>
+
+<h3>Error Example</h3>
+
+<pre><code>Error: Mesh 'Tree_01' not found in the Megabuffer!
+</code></pre>
+
+<hr>
+
+<h2>Internal Data Management</h2>
+
+<ul>
+    <li>
+        <code><strong>vertices: number[]</strong></code><br>
+        Dynamic master vertex storage array.
+    </li>
+
+    ```
+    <li>
+        <code><strong>indices: number[]</strong></code><br>
+        Dynamic master index storage array.
+    </li>
+
+    <li>
+        <code><strong>offsets: Map&lt;string, MeshOffset&gt;</strong></code><br>
+        Maps mesh names to their calculated buffer offsets.
+    </li>
+
+    <li>
+        <code><strong>currentMeshID: number</strong></code><br>
+        Internal auto-incrementing mesh identifier counter.
+    </li>
+
+    <li>
+        <code><strong>vertexStrideFloats: number</strong></code><br>
+        Number of floats per vertex used for offset calculations.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>const mega = new MegabufferBuilder(8);
+
+mega.addMesh(
+    "Cube",
+    cubeVertices,
+    cubeIndices
+);
+
+mega.addMesh(
+    "Sphere",
+    sphereVertices,
+    sphereIndices
+);
+
+const result = mega.build();
+
+const cubeOffset = mega.getOffset("Cube");
+</code></pre>
+
+<hr>
+
+<h2>Rendering Use Cases</h2>
+
+<p>The generated offsets are designed to work directly with indexed rendering APIs such as:</p>
+
+<pre><code>drawIndexed(
+    indexCount,
+    instanceCount,
+    firstIndex,
+    baseVertex,
+    firstInstance
+)
+</code></pre>
+
+<p>This allows many meshes to coexist inside a single GPU buffer while still rendering independently.</p>

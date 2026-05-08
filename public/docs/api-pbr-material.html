@@ -1,0 +1,277 @@
+<blockquote>
+    <p>The <code>StandardPBRMaterial</code> class implements a physically-based rendering material for NullGraph, providing albedo, normal, and packed (metallic/roughness/AO) texture maps alongside uniform parameters for metallic, roughness, and base color control.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>StandardPBRMaterial</code> (Class)</h2>
+
+<p>Represents a PBR material with texture maps and material parameters. It manages GPU uniform buffers, bind group creation, and provides a streamlined interface for applying the material to render batches.</p>
+
+<p>The class handles safe fallback textures, uniform buffer creation, and binding to the engine's material pipeline automatically.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new StandardPBRMaterial(engine, options)</code></h3>
+
+<p>Creates a new PBR material instance with the specified textures and parameters.</p>
+
+<ul>
+    <li>
+        <strong>engine</strong> (<code>NullGraph</code>):<br>
+        The engine instance providing GPU device access and texture management.
+    </li>
+    <li>
+        <strong>options</strong> (<code>PBRMaterialOptions</code>):<br>
+        Configuration object for the material's textures and properties.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Configuration Interface</h2>
+
+<h3><code>PBRMaterialOptions</code> (Interface)</h3>
+
+<p>Defines the configuration options for creating a <code>StandardPBRMaterial</code>.</p>
+
+<h4>Properties</h4>
+
+<ul>
+    <li>
+        <code><strong>albedoMap?: GPUTextureView</strong></code><br>
+        The base color/albedo texture map.<br>
+        Falls back to a white texture if not provided.
+    </li>
+    <li>
+        <code><strong>normalMap?: GPUTextureView</strong></code><br>
+        The normal map for surface detail.<br>
+        Falls back to a default normal texture (flat surface) if not provided.
+    </li>
+    <li>
+        <code><strong>packedMap?: GPUTextureView</strong></code><br>
+        Packed texture containing metallic, roughness, and ambient occlusion data.<br>
+        Falls back to a white texture if not provided.
+    </li>
+    <li>
+        <code><strong>packedMapFormat?: 'ARM' | 'MRAO'</strong></code><br>
+        Specifies the channel packing format of the packed map.<br>
+        <code>'ARM'</code> — Ambient Occlusion in R, Roughness in G, Metallic in B.<br>
+        <code>'MRAO'</code> — Metallic in R, Roughness in G, Ambient Occlusion in B.<br>
+        Defaults to <code>'ARM'</code> implicitly.
+    </li>
+    <li>
+        <code><strong>baseColor?: [number, number, number, number]</strong></code><br>
+        RGBA tint color multiplied with the albedo map.<br>
+        Defaults to <code>[1.0, 1.0, 1.0, 1.0]</code> (white, fully opaque).
+    </li>
+    <li>
+        <code><strong>metallicMultiplier?: number</strong></code><br>
+        Scalar multiplier applied to the metallic value sampled from the packed map.<br>
+        Defaults to <code>1.0</code>.
+    </li>
+    <li>
+        <code><strong>roughnessMultiplier?: number</strong></code><br>
+        Scalar multiplier applied to the roughness value sampled from the packed map.<br>
+        Defaults to <code>1.0</code>.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>albedoMap: GPUTextureView</strong></code><br>
+        The currently assigned albedo/base color texture view.
+    </li>
+    <li>
+        <code><strong>normalMap: GPUTextureView</strong></code><br>
+        The currently assigned normal map texture view.
+    </li>
+    <li>
+        <code><strong>packedMap: GPUTextureView</strong></code><br>
+        The currently assigned packed (ORM/MRAO) texture view.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Material Binding</h2>
+
+<h3><code>applyToBatch(batch, groupIndex?)</code></h3>
+
+<p>Attaches this material's textures and uniform parameters to a specific render batch, creating the necessary GPU bind group.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The render batch to apply the material to.
+    </li>
+    <li>
+        <strong>groupIndex</strong> (<code>number</code>):<br>
+        Optional bind group index (default: <code>1</code>). Specifies which bind group slot this material occupies in the shader.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GPUBindGroup</code><br>
+        The generated GPU bind group containing the material's textures and uniform buffer.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Binds the albedo, normal, and packed texture maps to the batch.</li>
+    <li>Creates a uniform buffer binding containing base color, metallic, roughness, packed map format flag, and padding.</li>
+    <li>Uses the engine's default sampler for all three texture maps.</li>
+    <li>Internally calls <code>engine.attachTextureMaterial()</code> to handle GPU bind group layout matching.</li>
+    <li>Caches the resulting bind group for potential reuse.</li>
+</ul>
+
+<hr>
+
+<h2>Uniform Parameter Updates</h2>
+
+<h3><code>updateUniforms(baseColor, metallic, roughness)</code></h3>
+
+<p>Updates the material's uniform parameters during runtime and writes them to the GPU buffer.</p>
+
+<ul>
+    <li>
+        <strong>baseColor</strong> (<code>[number, number, number, number]</code>):<br>
+        New RGBA base color values.
+    </li>
+    <li>
+        <strong>metallic</strong> (<code>number</code>):<br>
+        New metallic multiplier value.
+    </li>
+    <li>
+        <strong>roughness</strong> (<code>number</code>):<br>
+        New roughness multiplier value.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Constructs a new uniform data array with the provided values.</li>
+    <li>Writes the updated data directly to the GPU uniform buffer via the device queue.</li>
+    <li>Note: The internal packed map format flag is reset to <code>0.0</code> (ARM) in this method; subsequent calls may overwrite it. Future updates should preserve or accept the format flag separately.</li>
+</ul>
+
+<hr>
+
+<h2>Resource Cleanup</h2>
+
+<h3><code>destroy()</code></h3>
+
+<p>Releases the GPU uniform buffer associated with this material.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Calls <code>GPUBuffer.destroy()</code> on the internal uniform buffer.</li>
+    <li>Texture views are not destroyed, as they are managed externally by the engine's texture manager or user code.</li>
+</ul>
+
+<hr>
+
+<h2>Internal Uniform Buffer Layout</h2>
+
+<p>The material's uniform buffer uses the following 32-byte packed layout (<code>Float32Array</code>):</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Offset (bytes)</th>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td><code>baseColor.r</code></td>
+        <td><code>f32</code></td>
+        <td>Red channel of base color</td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>baseColor.g</code></td>
+        <td><code>f32</code></td>
+        <td>Green channel of base color</td>
+    </tr>
+    <tr>
+        <td>8</td>
+        <td><code>baseColor.b</code></td>
+        <td><code>f32</code></td>
+        <td>Blue channel of base color</td>
+    </tr>
+    <tr>
+        <td>12</td>
+        <td><code>baseColor.a</code></td>
+        <td><code>f32</code></td>
+        <td>Alpha channel of base color</td>
+    </tr>
+    <tr>
+        <td>16</td>
+        <td><code>metallicMultiplier</code></td>
+        <td><code>f32</code></td>
+        <td>Metallic scalar multiplier</td>
+    </tr>
+    <tr>
+        <td>20</td>
+        <td><code>roughnessMultiplier</code></td>
+        <td><code>f32</code></td>
+        <td>Roughness scalar multiplier</td>
+    </tr>
+    <tr>
+        <td>24</td>
+        <td><code>packedMapFormat</code></td>
+        <td><code>f32</code></td>
+        <td><code>0.0</code> for ARM, <code>1.0</code> for MRAO</td>
+    </tr>
+    <tr>
+        <td>28</td>
+        <td><code>_padding</code></td>
+        <td><code>f32</code></td>
+        <td>Padding for alignment (unused)</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>// Create a material with custom textures
+const material = new StandardPBRMaterial(engine, {
+    albedoMap: brickAlbedo,
+    normalMap: brickNormal,
+    packedMap: brickPacked,
+    packedMapFormat: 'ARM',
+    baseColor: [1.0, 0.9, 0.8, 1.0],
+    metallicMultiplier: 0.5,
+    roughnessMultiplier: 1.2
+});
+
+// Apply to a render batch
+const bindGroup = material.applyToBatch(myBatch, 1);
+
+// Later, update material parameters at runtime
+material.updateUniforms([1.5, 0.7, 0.3, 1.0], 0.8, 0.6);
+
+// Clean up when no longer needed
+material.destroy();
+</code></pre>
+
+<p>The material's textures remain managed externally; only the internal uniform buffer is destroyed when <code>destroy()</code> is called.</p>

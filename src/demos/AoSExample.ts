@@ -1,4 +1,4 @@
-import {cubeIndices, cubeVertices, generateDummyData} from "../data";
+import {cubeIndices, cubeVertices, generateDummyData} from "../data/geometryData";
 
 import { NullGraph, Camera } from 'null-graph';
 import {Primitives, StandardLayout} from "null-graph/geometry";

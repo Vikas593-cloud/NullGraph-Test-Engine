@@ -167,8 +167,8 @@ export async function setupSpaceFleet(engine: NullGraph, camera: Camera, getUiSt
         // ECS array will hold: [0] = time, [1] = amplitude
         @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
-        @group(1) @binding(0) var screenTex: texture_2d<f32>;
-        @group(1) @binding(1) var screenSamp: sampler;
+        @group(1) @binding(1) var screenTex: texture_2d<f32>;
+        @group(1) @binding(0) var screenSamp: sampler;
 
         struct VertexOut {
             @builtin(position) pos: vec4<f32>,

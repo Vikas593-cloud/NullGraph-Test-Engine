@@ -1,0 +1,216 @@
+<blockquote>
+    <p>The <code>TextureManager</code> class handles texture loading, GPU texture allocation, sampler reuse, caching, and fallback texture generation for WebGPU rendering workflows.</p>
+</blockquote>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new TextureManager(device)</code></h3>
+<p>Creates a new texture manager bound to a specific WebGPU device.</p>
+
+<ul>
+    <li><strong>device</strong> (<code>GPUDevice</code>): The active WebGPU device used for texture and sampler allocation.</li>
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>defaultSampler: GPUSampler</strong></code><br>
+        A reusable default sampler configured with:
+        <ul>
+            <li><code>magFilter: 'linear'</code></li>
+            <li><code>minFilter: 'linear'</code></li>
+            <li><code>addressModeU: 'repeat'</code></li>
+            <li><code>addressModeV: 'repeat'</code></li>
+        </ul>
+        Intended for standard tiled 3D texture usage.
+    </li>
+</ul>
+
+<hr>
+
+<h2><code>TextureLoadOptions</code> (Interface)</h2>
+
+<p>Optional configuration used when loading textures through <code>TextureManager.load()</code>.</p>
+
+<h3>Properties</h3>
+
+<ul>
+    <li>
+        <code><strong>sRGB?: boolean</strong></code><br>
+        Controls whether the texture should be treated as an sRGB color texture.
+        <ul>
+            <li><code>true</code> → Intended for Albedo/BaseColor textures.</li>
+            <li><code>false</code> → Intended for data textures such as Normal, Metallic, Roughness, AO, etc.</li>
+        </ul>
+        When enabled, the GPU automatically converts sampled values from sRGB to linear color space.
+    </li>
+
+    ```
+    <li>
+        <code><strong>samplerDescriptor?: GPUSamplerDescriptor</strong></code><br>
+        Optional sampler configuration for custom filtering or addressing modes. Defaults to linear filtering with repeat addressing.
+    </li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2>Texture Loading</h2>
+
+<h3><code>load(url, options?)</code></h3>
+
+<p>Fetches an image from a URL, decodes it into an <code>ImageBitmap</code>, uploads it to GPU memory, caches it, and returns a <code>GPUTextureView</code>.</p>
+
+<ul>
+    <li><strong>url</strong> (<code>string</code>): Path or URL to the texture image.</li>
+
+    ```
+    <li><strong>options</strong> (<code>TextureLoadOptions</code>): Optional loading configuration.</li>
+
+    <li><strong>Returns</strong>: <code>Promise&lt;GPUTextureView&gt;</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Automatically caches textures to avoid duplicate VRAM uploads.</li>
+    <li>Uses <code>rgba8unorm-srgb</code> format when <code>sRGB</code> is enabled.</li>
+    <li>Uses <code>rgba8unorm</code> format for non-color/data textures.</li>
+    <li>Attempts strict color-space decoding first via <code>createImageBitmap()</code>.</li>
+    <li>Falls back to standard decoding if browser-specific image decoding fails.</li>
+    <li>Uploads image data using <code>queue.copyExternalImageToTexture()</code>.</li>
+    <li>Returns fallback textures automatically if loading or decoding fails.</li>
+</ul>
+
+<h3>Fallback Behavior</h3>
+
+<p>If texture loading fails, the manager returns a safe fallback texture so rendering can continue without shader errors.</p>
+
+<ul>
+    <li>Color textures typically fallback to a solid white texture.</li>
+    <li>Normal/data textures may fallback to neutral placeholder textures.</li>
+</ul>
+
+<hr>
+
+<h2>Sampler Management</h2>
+
+<h3><code>getSampler(descriptor)</code></h3>
+
+<p>Creates or retrieves a cached sampler matching the provided descriptor.</p>
+
+<ul>
+    <li><strong>descriptor</strong> (<code>GPUSamplerDescriptor</code>): The sampler configuration.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>GPUSampler</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Samplers are cached internally using a serialized descriptor key.</li>
+    <li>Repeated requests with identical descriptors reuse the same GPU sampler object.</li>
+</ul>
+
+<hr>
+
+<h2>Texture Cache Management</h2>
+
+<h3><code>clearCache()</code></h3>
+
+<p>Destroys all cached GPU textures and clears internal sampler caches.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Calls <code>GPUTexture.destroy()</code> on all cached textures.</li>
+    <li>Clears both texture and sampler caches.</li>
+    <li>Typically used when unloading scenes or shutting down the renderer.</li>
+</ul>
+
+<hr>
+
+<h2>Solid Texture Utilities</h2>
+
+<h3><code>getSolidTexture(r, g, b, a?)</code></h3>
+
+<p>Generates and caches a 1x1 solid-color GPU texture.</p>
+
+<ul>
+    <li><strong>r</strong> (<code>number</code>): Red channel (0-255).</li>
+    <li><strong>g</strong> (<code>number</code>): Green channel (0-255).</li>
+    <li><strong>b</strong> (<code>number</code>): Blue channel (0-255).</li>
+    <li><strong>a</strong> (<code>number</code>): Alpha channel (0-255). Defaults to <code>255</code>.</li>
+
+    ```
+    <li><strong>Returns</strong>: <code>GPUTextureView</code></li>
+    ```
+
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Creates a 1x1 <code>rgba8unorm</code> texture.</li>
+    <li>Uploads pixel data using <code>queue.writeTexture()</code>.</li>
+    <li>Textures are cached by RGBA value to avoid duplicate allocations.</li>
+</ul>
+
+<hr>
+
+<h2>Fallback Texture Accessors</h2>
+
+<h3><code>fallbackWhite</code></h3>
+
+<p>Returns a reusable solid white texture view.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>GPUTextureView</code></li>
+</ul>
+
+<h3><code>fallbackNormal</code></h3>
+
+<p>Returns a reusable neutral normal-map texture view using RGB value <code>(128, 128, 255)</code>.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>GPUTextureView</code></li>
+</ul>
+
+<hr>
+
+<h2>Internal Caching Strategy</h2>
+
+<ul>
+    <li>
+        <code><strong>textureCache: Map&lt;string, GPUTexture&gt;</strong></code><br>
+        Prevents duplicate texture uploads by caching textures per URL and color-space combination.
+    </li>
+
+    ```
+    <li>
+        <code><strong>samplerCache: Map&lt;string, GPUSampler&gt;</strong></code><br>
+        Reuses sampler objects for identical sampler descriptors.
+    </li>
+
+    <li>
+        <code><strong>solidTextures: Map&lt;string, GPUTextureView&gt;</strong></code><br>
+        Stores generated 1x1 solid-color textures keyed by RGBA value.
+    </li>
+    ```
+
+</ul>

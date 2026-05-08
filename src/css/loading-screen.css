@@ -1,0 +1,90 @@
+/* --- ENHANCED LOADING SCREEN --- */
+#loading-screen {
+    /* 1. CSS Variables for easy theme switching */
+    --base-color: #050d26;
+    --peak-color: #33e6cc;
+    --peak-glow: rgba(51, 230, 204, 0.4);
+
+    position: fixed;
+    inset: 0; /* Modern shorthand for top/left/right/bottom 0 */
+    /* 2. Radial gradient adds subtle vignette/depth instead of a flat flat color */
+    background: radial-gradient(circle at center, #0a1b42 0%, var(--base-color) 100%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* --- THE SPINNER (Glowing Dual-Ring) --- */
+.spinner {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    margin-bottom: 32px;
+}
+
+/* Outer glowing ring with an elastic ease */
+.spinner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--peak-color);
+    border-bottom-color: var(--peak-color);
+    box-shadow: 0 0 20px var(--peak-glow);
+    animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+/* Inner fast secondary ring */
+.spinner::after {
+    content: '';
+    position: absolute;
+    inset: 12px; /* Shrinks the inner ring without extra math */
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-left-color: rgba(255, 255, 255, 0.8);
+    border-right-color: rgba(255, 255, 255, 0.8);
+    animation: spin-reverse 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+    0% { transform: rotate(360deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* --- THE TEXT (Breathing Glow) --- */
+.loading-text {
+    color: rgba(255, 255, 255, 0.85);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    /* 3. Adds a subtle breathing effect to the text */
+    animation: breath 2s ease-in-out infinite;
+}
+
+.loading-text .neon {
+    color: var(--peak-color);
+    text-shadow: 0 0 15px var(--peak-glow);
+}
+
+@keyframes breath {
+    0%, 100% {
+        opacity: 0.6;
+        transform: scale(0.98);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

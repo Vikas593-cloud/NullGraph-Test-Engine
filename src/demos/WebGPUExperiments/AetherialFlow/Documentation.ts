@@ -1,5 +1,4 @@
-import { DemoMetadata } from "../../../types"; // Adjust the import path to match your structure
-
+import { DemoMetadata } from "../../../types";
 export const aetherialFlowDocumentation: DemoMetadata = {
     title: "Aetherial Flow",
     concepts: [

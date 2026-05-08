@@ -1,6 +1,6 @@
 // demos/SimpleMultiPassExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import {cubeIndices, cubeVertices, cubeVerticesWithUV} from "../data";
+import {cubeIndices, cubeVertices, cubeVerticesWithUV} from "../data/geometryData";
 
 export async function setupPostProcessing(engine: NullGraph, camera: Camera,getUiState: () => { amplitude: number }) {
     const STRIDE = 14;
@@ -100,8 +100,8 @@ export async function setupPostProcessing(engine: NullGraph, camera: Camera,getU
         @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
         // Grab the texture from Pass 1!
-        @group(1) @binding(0) var screenTex: texture_2d<f32>;
-        @group(1) @binding(1) var screenSamp: sampler;
+        @group(1) @binding(1) var screenTex: texture_2d<f32>;
+        @group(1) @binding(0) var screenSamp: sampler;
 
         struct VertexOut {
             @builtin(position) pos: vec4<f32>,

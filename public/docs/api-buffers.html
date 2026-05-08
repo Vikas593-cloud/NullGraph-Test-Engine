@@ -1,0 +1,546 @@
+<blockquote>
+    <p>The <code>BatchManager</code> and <code>BufferManager</code> classes form NullGraph's GPU resource allocation and draw call preparation layer. <code>BatchManager</code> creates fully configured <code>RenderBatch</code> objects — complete with render pipelines, storage buffers, indirect draw buffers, compute culling pipelines, and bind groups — and provides utilities for attaching textures, materials, and custom bind groups. <code>BufferManager</code> handles low-level vertex and index buffer creation with proper WebGPU alignment.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>BatchManager</code> (Class)</h2>
+
+<p>Central factory and manager for <code>RenderBatch</code> objects. It constructs GPU pipelines, allocates storage and indirect buffers, creates bind groups, and provides methods for attaching textures, materials, and custom bind groups to batches. It also manages batch lifecycle — creation, geometry assignment, data updates, and cleanup.</p>
+
+<hr>
+
+<h3>Constructor</h3>
+
+<h4><code>new BatchManager(ctx)</code></h4>
+
+<p>Creates a new batch manager bound to a WebGPU context.</p>
+
+<ul>
+    <li>
+        <strong>ctx</strong> (<code>WebGPUContext</code>):<br>
+        The WebGPU context providing the device, swap chain format, and camera uniform buffer reference.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Batch Creation</h3>
+
+<h4><code>createBatch(pass, config)</code></h4>
+
+<p>Creates a fully configured <code>RenderBatch</code>, adds it to the specified render pass, and returns it for further configuration.</p>
+
+<ul>
+    <li>
+        <strong>pass</strong> (<code>RenderPassNode</code>):<br>
+        The render pass to which the new batch will be added.
+    </li>
+    <li>
+        <strong>config</strong> (<code>PipelineConfig</code>):<br>
+        Configuration object specifying shader code, vertex layout, instance capacity, rendering topology, depth/stencil settings, and optional compute shader for indirect drawing.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>RenderBatch</code><br>
+        The newly created and configured render batch.
+    </li>
+</ul>
+
+<h3>Pipeline Creation</h3>
+
+<p>The method constructs a GPU render pipeline from the configuration:</p>
+
+<ul>
+    <li><strong>Shader Module</strong>: Created from <code>config.shaderCode</code> with entry points <code>'vs_main'</code> and <code>'fs_main'</code>.</li>
+    <li><strong>Color Targets</strong>: Supports multiple render targets (MRT). If <code>config.targetFormats</code> is provided (an array), each format becomes a separate color target. Otherwise, falls back to a single target using <code>config.targetFormat</code> or the context's swap chain format. Each target can optionally receive the same blend state from <code>config.blend</code>.</li>
+    <li><strong>Vertex Layout</strong>: Taken from <code>config.vertexLayouts</code>, allowing dynamic stride and attribute configurations (e.g., 8-float static vs. 16-float skinned).</li>
+    <li><strong>Primitive Topology</strong>: Defaults to <code>'triangle-list'</code>; configurable via <code>config.topology</code>.</li>
+    <li><strong>Depth/Stencil</strong>: Automatically enabled if the pass has a depth attachment or is a main screen pass. Uses <code>'depth24plus'</code> format with configurable <code>depthWriteEnabled</code> and <code>depthCompare</code>.</li>
+    <li><strong>Pipeline Layout</strong>: Uses <code>'auto'</code> layout — WebGPU derives bind group layouts from shader reflection.</li>
+</ul>
+
+<h3>Buffer Allocation</h3>
+
+<ul>
+    <li><strong>Storage Buffer</strong>: Allocated with size <code>maxInstances × strideFloats × 4</code> bytes. Usage includes <code>STORAGE</code>, <code>COPY_DST</code>, and <code>COPY_SRC</code>. This buffer holds per-instance transform data for rendering.</li>
+</ul>
+
+<h3>Indirect Draw & Compute Culling</h3>
+
+<p>If <code>config.isIndirect</code> is <code>true</code> and <code>config.computeShaderCode</code> is provided, the method additionally creates:</p>
+
+<ul>
+    <li><strong>Indirect Buffer</strong>: 20 bytes (<code>5 × 4</code>) for the <code>drawIndexedIndirect</code> structure (indexCount, instanceCount, firstIndex, baseVertex, firstInstance). Usage includes <code>INDIRECT</code>, <code>STORAGE</code>, and <code>COPY_DST</code>.</li>
+    <li><strong>Source Storage Buffer</strong>: Either a shared buffer from <code>config.sharedSourceBuffer</code> or a newly allocated buffer of same size as the storage buffer. This holds the full instance dataset for compute culling.</li>
+    <li><strong>Compute Pipeline</strong>: Created from <code>config.computeShaderCode</code> with entry point <code>'cs_main'</code>.</li>
+    <li><strong>Compute Bind Group</strong> (group 0): Binds the camera uniform buffer (binding 0), source storage buffer (binding 1), destination storage buffer (binding 2), and indirect buffer (binding 3).</li>
+</ul>
+
+<h3>Default Bind Group</h3>
+
+<p>A render bind group (group 0) is always created, binding the camera uniform buffer (binding 0) and the storage buffer (binding 1).</p>
+
+<h3>Material Attachment</h3>
+
+<p>If <code>config.material</code> is provided, its <code>applyToBatch()</code> method is called, and the resulting bind group is stored in <code>batch.customBindGroups[1]</code> (the standard material bind group slot).</p>
+
+<h3>Pass Registration</h3>
+
+<p>The method automatically adds the new batch to the specified pass via <code>pass.addBatch(batch)</code>.</p>
+
+<hr>
+
+<h3>Configuration Interface</h3>
+
+<h4><code>PipelineConfig</code> (Interface)</h4>
+
+<table>
+    <thead>
+    <tr>
+        <th>Property</th>
+        <th>Type</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>shaderCode</code></td>
+        <td><code>string</code></td>
+        <td>WGSL shader source code (vertex + fragment)</td>
+    </tr>
+    <tr>
+        <td><code>strideFloats</code></td>
+        <td><code>number</code></td>
+        <td>Number of floats per instance in the storage buffer</td>
+    </tr>
+    <tr>
+        <td><code>maxInstances</code></td>
+        <td><code>number</code></td>
+        <td>Maximum number of instances this batch can hold</td>
+    </tr>
+    <tr>
+        <td><code>vertexLayouts</code></td>
+        <td><code>GPUVertexBufferLayout[]</code></td>
+        <td>Vertex buffer layout descriptors</td>
+    </tr>
+    <tr>
+        <td><code>topology</code></td>
+        <td><code>GPUPrimitiveTopology</code></td>
+        <td>Primitive topology (default: <code>'triangle-list'</code>)</td>
+    </tr>
+    <tr>
+        <td><code>targetFormat</code></td>
+        <td><code>GPUTextureFormat</code></td>
+        <td>Single render target format (ignored if <code>targetFormats</code> is set)</td>
+    </tr>
+    <tr>
+        <td><code>targetFormats</code></td>
+        <td><code>GPUTextureFormat[]</code></td>
+        <td>Multiple render target formats for MRT</td>
+    </tr>
+    <tr>
+        <td><code>blend</code></td>
+        <td><code>GPUBlendState</code></td>
+        <td>Blend state applied to all color targets</td>
+    </tr>
+    <tr>
+        <td><code>depthWriteEnabled</code></td>
+        <td><code>boolean</code></td>
+        <td>Whether depth writing is enabled (default: <code>true</code>)</td>
+    </tr>
+    <tr>
+        <td><code>depthCompare</code></td>
+        <td><code>GPUCompareFunction</code></td>
+        <td>Depth comparison function (default: <code>'less'</code>)</td>
+    </tr>
+    <tr>
+        <td><code>isIndirect</code></td>
+        <td><code>boolean</code></td>
+        <td>Whether this batch uses indirect drawing with GPU culling</td>
+    </tr>
+    <tr>
+        <td><code>computeShaderCode</code></td>
+        <td><code>string</code></td>
+        <td>WGSL compute shader source (required if <code>isIndirect</code>)</td>
+    </tr>
+    <tr>
+        <td><code>sharedSourceBuffer</code></td>
+        <td><code>GPUBuffer</code></td>
+        <td>Optional shared source storage buffer for compute culling</td>
+    </tr>
+    <tr>
+        <td><code>material</code></td>
+        <td><code>Material</code></td>
+        <td>Optional material to attach at creation time</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h3>Batch Cleanup</h3>
+
+<h4><code>clearBatch(pass, batch)</code></h4>
+
+<p>Removes a batch from its render pass and destroys its dedicated GPU buffers to free video memory.</p>
+
+<ul>
+    <li>
+        <strong>pass</strong> (<code>RenderPassNode</code>):<br>
+        The render pass containing the batch.
+    </li>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to remove and clean up.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Calls <code>pass.removeBatch(batch)</code> if available; otherwise manually splices from the batches array.</li>
+    <li>Destroys <code>batch.storageBuffer</code> (always dedicated to this batch).</li>
+    <li>Destroys <code>batch.indirectBuffer</code> (always dedicated to this batch).</li>
+    <li><strong>Does not</strong> destroy <code>batch.sourceStorageBuffer</code> — it may be shared across multiple batches via <code>config.sharedSourceBuffer</code>. The owner of the shared buffer is responsible for its lifecycle.</li>
+</ul>
+
+<hr>
+
+<h3>Geometry Assignment</h3>
+
+<h4><code>setBatchGeometry(batch, vertexBuffer, indexBuffer, indexCount, format?)</code></h4>
+
+<p>Assigns vertex and index buffers to a batch for rendering.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to configure.
+    </li>
+    <li>
+        <strong>vertexBuffer</strong> (<code>GPUBuffer</code>):<br>
+        The GPU vertex buffer to bind at slot 0.
+    </li>
+    <li>
+        <strong>indexBuffer</strong> (<code>GPUBuffer</code>):<br>
+        The GPU index buffer.
+    </li>
+    <li>
+        <strong>indexCount</strong> (<code>number</code>):<br>
+        The number of indices for direct indexed draws.
+    </li>
+    <li>
+        <strong>format</strong> (<code>GPUIndexFormat</code>):<br>
+        Optional. The index format (<code>'uint16'</code> or <code>'uint32'</code>). Defaults to <code>'uint16'</code>.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h3>Instance Data Upload</h3>
+
+<h4><code>updateBatchData(batch, rawData, instanceCount)</code></h4>
+
+<p>Uploads per-instance transform data to the batch's GPU storage buffer.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to update.
+    </li>
+    <li>
+        <strong>rawData</strong> (<code>Float32Array</code>):<br>
+        Flat interleaved instance data (positions, rotations, scales, etc.).
+    </li>
+    <li>
+        <strong>instanceCount</strong> (<code>number</code>):<br>
+        The current number of active instances.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Updates <code>batch.currentInstanceCount</code>.</li>
+    <li><strong>Indirect Batches</strong>: If the batch uses indirect drawing and has a source storage buffer, data is written there (the compute shader will cull and copy to the render storage buffer). Otherwise, data is written directly to the storage buffer.</li>
+    <li><strong>Static Batches</strong>: Data is written directly to <code>batch.storageBuffer</code>.</li>
+    <li>Uses <code>device.queue.writeBuffer</code> with the calculated byte size: <code>instanceCount × stride × 4</code>.</li>
+</ul>
+
+<hr>
+
+<h3>Texture Material Attachment</h3>
+
+<h4><code>attachTextureMaterial(batch, textureView, sampler, extraEntries?, groupIndex?)</code></h4>
+
+<p>Creates and attaches a bind group containing a sampler, one or more texture views, and optional additional entries (such as uniform buffers) to a batch at the specified group index.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to attach the bind group to.
+    </li>
+    <li>
+        <strong>textureView</strong> (<code>GPUTextureView | GPUTextureView[]</code>):<br>
+        A single texture view or array of texture views to bind. The first texture is bound at binding 1, the second at binding 2, etc.
+    </li>
+    <li>
+        <strong>sampler</strong> (<code>GPUSampler</code>):<br>
+        The sampler to bind at binding 0.
+    </li>
+    <li>
+        <strong>extraEntries</strong> (<code>GPUBindGroupEntry[]</code>):<br>
+        Optional. Additional bind group entries (e.g., material uniform buffers). Appended after the textures with ascending binding indices.
+    </li>
+    <li>
+        <strong>groupIndex</strong> (<code>number</code>):<br>
+        Optional. The bind group index to write to. Defaults to <code>1</code> (the standard material bind group slot).
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GPUBindGroup</code><br>
+        The created bind group.
+    </li>
+</ul>
+
+<h3>Binding Layout Convention</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Binding</th>
+        <th>Resource</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td>Sampler</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>Texture view 0 (e.g., albedo)</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td>Texture view 1 (e.g., normal map)</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>Texture view 2 (e.g., packed ORM)</td>
+    </tr>
+    <tr>
+        <td>4+</td>
+        <td>Extra entries (uniform buffers, etc.)</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>This matches the standard PBR shader bindings defined in <code>PBRChunks.CommonBindings</code>.</p>
+
+<hr>
+
+<h3>Custom Bind Group Attachment</h3>
+
+<h4><code>attachCustomBindGroup(batch, entries, groupIndex?, target?)</code></h4>
+
+<p>Creates and attaches a fully custom bind group to a batch, with explicit control over whether it applies to the render pipeline, compute pipeline, or both.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to attach the bind group to.
+    </li>
+    <li>
+        <strong>entries</strong> (<code>GPUBindGroupEntry[]</code>):<br>
+        Array of bind group entries defining the binding layout.
+    </li>
+    <li>
+        <strong>groupIndex</strong> (<code>number</code>):<br>
+        Optional. The bind group index. Defaults to <code>1</code>.
+    </li>
+    <li>
+        <strong>target</strong> (<code>'render' | 'compute' | 'both'</code>):<br>
+        Optional. Which pipeline type(s) to attach to. Defaults to <code>'render'</code>.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li><strong>Render Target</strong>: If <code>target</code> is <code>'render'</code> or <code>'both'</code>, the bind group is created using the render pipeline's layout and stored in <code>batch.customBindGroups[groupIndex]</code>.</li>
+    <li><strong>Compute Target</strong>: If <code>target</code> is <code>'compute'</code> or <code>'both'</code>, the bind group is created using the compute pipeline's layout and stored in <code>batch.computeCustomBindGroups[groupIndex]</code>. The <code>computeCustomBindGroups</code> object is created lazily if it doesn't exist.</li>
+</ul>
+
+<hr>
+
+<h3>Material Attachment (Generic)</h3>
+
+<h4><code>attachMaterial(batch, material, groupIndex?)</code></h4>
+
+<p>Attaches a <code>Material</code> instance to a batch by calling its <code>applyToBatch()</code> method.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The batch to attach the material to.
+    </li>
+    <li>
+        <strong>material</strong> (<code>Material</code>):<br>
+        The material instance (must implement <code>applyToBatch(batch): GPUBindGroup</code>).
+    </li>
+    <li>
+        <strong>groupIndex</strong> (<code>number</code>):<br>
+        Optional. The bind group index. Defaults to <code>1</code>.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GPUBindGroup</code><br>
+        The bind group returned by the material's <code>applyToBatch</code> method.
+    </li>
+</ul>
+
+<h3>Integration with StandardPBRMaterial</h3>
+
+<p>This method is designed to work with <code>StandardPBRMaterial</code> and similar classes. The material's <code>applyToBatch</code> method internally calls <code>attachTextureMaterial</code> to create the bind group with textures, sampler, and a material uniform buffer.</p>
+
+<hr>
+
+<hr>
+
+<h2><code>BufferManager</code> (Class)</h2>
+
+<p>A lightweight utility for creating properly aligned GPU vertex and index buffers from CPU-side typed arrays.</p>
+
+<hr>
+
+<h3>Constructor</h3>
+
+<h4><code>new BufferManager(device)</code></h4>
+
+<p>Creates a new buffer manager bound to a GPU device.</p>
+
+<ul>
+    <li>
+        <strong>device</strong> (<code>GPUDevice</code>):<br>
+        The WebGPU device used for buffer creation.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Vertex Buffer Creation</h3>
+
+<h4><code>createVertexBuffer(data)</code></h4>
+
+<p>Creates a GPU vertex buffer and immediately uploads the provided data.</p>
+
+<ul>
+    <li>
+        <strong>data</strong> (<code>Float32Array</code>):<br>
+        Flat interleaved vertex attribute data.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GPUBuffer</code><br>
+        A GPU buffer with <code>VERTEX | COPY_DST</code> usage.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Creates the buffer with <code>mappedAtCreation: true</code> for immediate CPU upload.</li>
+    <li>Copies the data into the mapped range using typed array <code>set()</code>.</li>
+    <li>Unmaps the buffer, making it ready for GPU use.</li>
+    <li>Buffer size is exactly <code>data.byteLength</code> — WebGPU requires 4-byte alignment, which <code>Float32Array</code> naturally satisfies.</li>
+</ul>
+
+<hr>
+
+<h3>Index Buffer Creation</h3>
+
+<h4><code>createIndexBuffer(data)</code></h4>
+
+<p>Creates a GPU index buffer and immediately uploads the provided data.</p>
+
+<ul>
+    <li>
+        <strong>data</strong> (<code>Uint16Array | Uint32Array</code>):<br>
+        Index data defining triangle connectivity.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GPUBuffer</code><br>
+        A GPU buffer with <code>INDEX | COPY_DST</code> usage.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Rounds the buffer size up to the nearest multiple of 4 bytes via <code>Math.ceil(data.byteLength / 4) * 4</code>. This ensures 4-byte alignment required by WebGPU, which is particularly important for <code>Uint16Array</code> data where an odd number of indices could result in a non-aligned byte length.</li>
+    <li>Creates the buffer with <code>mappedAtCreation: true</code>.</li>
+    <li>Copies the data using the appropriate typed array view (<code>Uint16Array</code> or <code>Uint32Array</code>) into the mapped range.</li>
+    <li>Unmaps the buffer for GPU use.</li>
+</ul>
+
+<h3>Alignment Note</h3>
+
+<p>WebGPU requires all buffer sizes to be multiples of 4 bytes. For <code>Uint16Array</code> index buffers with an odd number of indices, the byte length will be <code>2 × oddNumber</code>, which is not a multiple of 4. The rounding ensures compliance, and the extra padding bytes are ignored by the GPU since the index count is specified separately in draw calls.</p>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { WebGPUContext } from './WebGPUContext';
+import { BatchManager } from './BatchManager';
+import { BufferManager } from './BufferManager';
+import { RenderPassNode } from './RenderPass';
+import { StandardPBRMaterial } from './StandardPBRMaterial';
+import { buildPBRShader } from './ShaderBuilder';
+
+const ctx = new WebGPUContext(/* ... */);
+const batchManager = new BatchManager(ctx);
+const bufferManager = new BufferManager(ctx.device);
+
+// Create a render pass
+const mainPass = new RenderPassNode({
+    name: 'Main',
+    isMainScreenPass: true
+});
+
+// Create a static PBR shader
+const shaderCode = buildPBRShader({ useSkinning: false });
+
+// Create a batch
+const batch = batchManager.createBatch(mainPass, {
+    shaderCode,
+    strideFloats: 14,  // 2 padding + 3 pos + 4 rot + 3 scale + 2 padding
+    maxInstances: 1000,
+    vertexLayouts: [{
+        arrayStride: 32,  // 8 floats × 4 bytes (static mesh)
+        attributes: [
+            { format: 'float32x3', offset: 0,  shaderLocation: 0 },
+            { format: 'float32x3', offset: 12, shaderLocation: 1 },
+            { format: 'float32x2', offset: 24, shaderLocation: 2 }
+        ]
+    }],
+    topology: 'triangle-list',
+    material: myPBRMaterial  // Optional: attach a material
+});
+
+// Upload geometry
+const vertices = new Float32Array(/* ... */);
+const indices = new Uint16Array(/* ... */);
+const vbo = bufferManager.createVertexBuffer(vertices);
+const ibo = bufferManager.createIndexBuffer(indices);
+batchManager.setBatchGeometry(batch, vbo, ibo, indices.length, 'uint16');
+
+// Upload instance data
+const instanceData = new Float32Array(/* 14 floats per instance × N instances */);
+batchManager.updateBatchData(batch, instanceData, instanceCount);
+
+// Clean up when done
+batchManager.clearBatch(mainPass, batch);
+</code></pre>

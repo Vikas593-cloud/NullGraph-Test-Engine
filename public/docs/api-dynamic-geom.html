@@ -1,0 +1,458 @@
+<blockquote>
+    <p>The <code>Geometry</code>, <code>GeometryBuilder</code>, <code>VertexLayout</code>, <code>Primitives</code>, <code>MegabufferBuilder</code>, and <code>DynamicGeometryManager</code> systems provide NullGraph’s core geometry pipeline. Together they define vertex memory layouts, procedural mesh generation, GPU upload workflows, megabuffer packing, and dynamic runtime geometry streaming.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>VertexAttribute</code> (Enum)</h2>
+<p>Defines the supported vertex attribute types used when constructing a <code>VertexLayout</code>.</p>
+
+<ul>
+    <li><code><strong>Position</strong></code><br>
+        <code>float32x3</code> (12 bytes) — Vertex world/local position.</li>
+
+    ```
+    <li><code><strong>Normal</strong></code><br>
+        <code>float32x3</code> (12 bytes) — Vertex normal vector.</li>
+
+    <li><code><strong>UV</strong></code><br>
+        <code>float32x2</code> (8 bytes) — Texture coordinate.</li>
+
+    <li><code><strong>Color</strong></code><br>
+        <code>float32x4</code> (16 bytes) — RGBA vertex color.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>VertexLayout</code> (Class)</h2>
+<p>Represents a fully-defined vertex memory layout. This class calculates stride information automatically and generates the WebGPU-compatible vertex buffer descriptors required by render pipelines.</p>
+
+<h3>Constructor</h3>
+
+<h3><code>new VertexLayout(attributes)</code></h3>
+
+<ul>
+    <li><strong>attributes</strong> (<code>VertexAttribute[]</code>): Ordered list of vertex attributes.</li>
+</ul>
+
+<hr>
+
+<h3>Public Properties</h3>
+
+<ul>
+    <li><code><strong>attributes: VertexAttribute[]</strong></code><br>
+        Ordered list describing the structure of each vertex.</li>
+
+    ```
+    <li><code><strong>strideBytes: number</strong></code><br>
+        Total vertex size in bytes.</li>
+
+    <li><code><strong>strideFloats: number</strong></code><br>
+        Total vertex size in 32-bit floats.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h3>Methods</h3>
+
+<h3><code>getWebGPUDescriptor()</code></h3>
+<p>Generates the exact <code>GPUVertexBufferLayout[]</code> descriptor required by <code>device.createRenderPipeline()</code>.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>GPUVertexBufferLayout[]</code></li>
+</ul>
+
+<hr>
+
+<h3>Built-in Layouts</h3>
+
+<ul>
+    <li><code><strong>CompleteLayout</strong></code><br>
+        Includes Position + Normal + UV + Color.</li>
+
+    ```
+    <li><code><strong>StandardLayout</strong></code><br>
+        Includes Position + Normal + UV.</li>
+
+    <li><code><strong>PositionOnlyLayout</strong></code><br>
+        Includes only Position.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>Geometry</code> (Class)</h2>
+<p>Represents a CPU-side mesh and its corresponding GPU buffers. Geometry objects store raw vertex/index data and can upload themselves directly to GPU memory using the engine’s <code>BufferManager</code>.</p>
+
+<h3>Constructor</h3>
+
+<h3><code>new Geometry(layout, vertices, indices)</code></h3>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex memory layout.</li>
+    <li><strong>vertices</strong> (<code>Float32Array</code>): Raw vertex data.</li>
+    <li><strong>indices</strong> (<code>Uint16Array | Uint32Array</code>): Triangle index data.</li>
+</ul>
+
+<hr>
+
+<h3>Public Properties</h3>
+
+<ul>
+    <li><code><strong>layout: VertexLayout</strong></code><br>
+        The vertex layout used by this mesh.</li>
+
+    ```
+    <li><code><strong>vertices: Float32Array</strong></code><br>
+        Raw CPU-side vertex array.</li>
+
+    <li><code><strong>indices: Uint16Array | Uint32Array</strong></code><br>
+        Raw CPU-side index array.</li>
+
+    <li><code><strong>vertexBuffer: GPUBuffer | null</strong></code><br>
+        GPU vertex buffer generated after upload.</li>
+
+    <li><code><strong>indexBuffer: GPUBuffer | null</strong></code><br>
+        GPU index buffer generated after upload.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h3>Methods</h3>
+
+<h3><code>upload(engine)</code></h3>
+<p>Uploads the mesh to GPU memory using the engine’s <code>BufferManager</code>.</p>
+
+<ul>
+    <li><strong>engine</strong> (<code>NullGraph</code>): Active engine instance.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>destroy()</code></h3>
+<p>Destroys the underlying GPU buffers and clears internal references.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<hr>
+
+<h2><code>VertexData</code> (Interface)</h2>
+<p>Describes a single vertex used by <code>GeometryBuilder</code>.</p>
+
+<ul>
+    <li><code><strong>position: [number, number, number]</strong></code><br>
+        Required XYZ vertex position.</li>
+
+    ```
+    <li><code><strong>normal?: [number, number, number]</strong></code><br>
+        Optional vertex normal.</li>
+
+    <li><code><strong>uv?: [number, number]</strong></code><br>
+        Optional texture coordinates.</li>
+
+    <li><code><strong>color?: [number, number, number, number]</strong></code><br>
+        Optional RGBA vertex color.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>GeometryBuilder</code> (Class)</h2>
+<p>Utility for manually constructing procedural meshes vertex-by-vertex at runtime.</p>
+
+<h3>Constructor</h3>
+
+<h3><code>new GeometryBuilder(layout)</code></h3>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>): Vertex format definition.</li>
+</ul>
+
+<hr>
+
+<h3>Public Properties</h3>
+
+<ul>
+    <li><code><strong>vertices: number[]</strong></code><br>
+        Accumulated vertex data.</li>
+
+    ```
+    <li><code><strong>indices: number[]</strong></code><br>
+        Accumulated index data.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h3>Methods</h3>
+
+<h3><code>addVertex(data)</code></h3>
+<p>Adds a vertex to the geometry stream.</p>
+
+<ul>
+    <li><strong>data</strong> (<code>VertexData</code>): Vertex definition.</li>
+    <li><strong>Returns</strong>: <code>number</code> — The generated vertex index.</li>
+</ul>
+
+<h3><code>addTriangle(a, b, c)</code></h3>
+<p>Adds a triangle face using existing vertex indices.</p>
+
+<ul>
+    <li><strong>a</strong> (<code>number</code>): First vertex index.</li>
+    <li><strong>b</strong> (<code>number</code>): Second vertex index.</li>
+    <li><strong>c</strong> (<code>number</code>): Third vertex index.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>build()</code></h3>
+<p>Finalizes the geometry and converts accumulated arrays into typed arrays.</p>
+
+<ul>
+    <li><strong>Returns</strong>:
+        <code>
+            {
+            v: Float32Array;
+            i: Uint16Array;
+            vertexBuffer: Float32Array;
+            indexBuffer: Uint16Array;
+            layout: VertexLayout;
+            }
+        </code>
+    </li>
+</ul>
+
+<hr>
+
+<h2><code>Primitives</code> (Class)</h2>
+<p>Factory class containing procedural geometry generators for common 3D primitive meshes.</p>
+
+<hr>
+
+<h3>Primitive Generators</h3>
+
+<h3><code>createCube(layout, width, height, depth)</code></h3>
+<p>Creates a box mesh centered at the origin.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>width</strong> (<code>number</code>)</li>
+    <li><strong>height</strong> (<code>number</code>)</li>
+    <li><strong>depth</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createPlane(layout, width, height)</code></h3>
+<p>Creates a flat quad centered at the origin.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>width</strong> (<code>number</code>)</li>
+    <li><strong>height</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createSphere(layout, radius, widthSegments, heightSegments)</code></h3>
+<p>Creates a UV sphere mesh using configurable subdivision counts.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>radius</strong> (<code>number</code>)</li>
+    <li><strong>widthSegments</strong> (<code>number</code>)</li>
+    <li><strong>heightSegments</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createTorus(layout, radius, tubeRadius, radialSegments, tubularSegments)</code></h3>
+<p>Creates a torus mesh with configurable tube/ring subdivisions.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>radius</strong> (<code>number</code>)</li>
+    <li><strong>tubeRadius</strong> (<code>number</code>)</li>
+    <li><strong>radialSegments</strong> (<code>number</code>)</li>
+    <li><strong>tubularSegments</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createPyramid(layout, width, height, depth)</code></h3>
+<p>Creates a flat-shaded pyramid mesh.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>width</strong> (<code>number</code>)</li>
+    <li><strong>height</strong> (<code>number</code>)</li>
+    <li><strong>depth</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createOctahedron(layout, width, height, depth)</code></h3>
+<p>Creates an octahedron mesh using duplicated vertices for flat shading.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>width</strong> (<code>number</code>)</li>
+    <li><strong>height</strong> (<code>number</code>)</li>
+    <li><strong>depth</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<h3><code>createIcosahedron(layout, radius)</code></h3>
+<p>Creates a flat-shaded icosahedron mesh.</p>
+
+<ul>
+    <li><strong>layout</strong> (<code>VertexLayout</code>)</li>
+    <li><strong>radius</strong> (<code>number</code>)</li>
+    <li><strong>Returns</strong>: <code>Geometry</code></li>
+</ul>
+
+<hr>
+
+<h2><code>MeshOffset</code> (Interface)</h2>
+<p>Describes where a mesh exists inside a packed megabuffer.</p>
+
+<ul>
+    <li><code><strong>indexCount: number</strong></code><br>
+        Total indices belonging to the mesh.</li>
+
+    ```
+    <li><code><strong>firstIndex: number</strong></code><br>
+        Starting index inside the global index buffer.</li>
+
+    <li><code><strong>baseVertex: number</strong></code><br>
+        Starting vertex inside the global vertex buffer.</li>
+
+    <li><code><strong>meshID: number</strong></code><br>
+        Unique integer ID useful for GPU-driven rendering systems.</li>
+
+    <li><code><strong>vertexCount?: number</strong></code><br>
+        Optional total vertex count.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h2><code>MegabufferBuilder</code> (Class)</h2>
+<p>Utility for combining multiple meshes into one giant packed vertex/index buffer pair for GPU-efficient rendering.</p>
+
+<h3>Constructor</h3>
+
+<h3><code>new MegabufferBuilder(vertexStrideFloats?)</code></h3>
+
+<ul>
+    <li><strong>vertexStrideFloats</strong> (<code>number</code>): Floats per vertex. Defaults to <code>6</code>.</li>
+</ul>
+
+<hr>
+
+<h3>Methods</h3>
+
+<h3><code>addMesh(name, meshVertices, meshIndices)</code></h3>
+<p>Packs a mesh into the megabuffer and returns its offsets.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>): Mesh registry name.</li>
+    <li><strong>meshVertices</strong> (<code>Float32Array | number[]</code>)</li>
+    <li><strong>meshIndices</strong> (<code>Uint16Array | number[]</code>)</li>
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+</ul>
+
+<h3><code>build()</code></h3>
+<p>Builds the final packed vertex/index arrays.</p>
+
+<ul>
+    <li><strong>Returns</strong>:
+        <code>
+            {
+            megaVertices: Float32Array;
+            megaIndices: Uint16Array | Uint32Array;
+            indexFormat: GPUIndexFormat;
+            }
+        </code>
+    </li>
+</ul>
+
+<h3><code>getOffset(name)</code></h3>
+<p>Retrieves the stored offset information for a mesh.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>)</li>
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+</ul>
+
+<hr>
+
+<h2><code>DynamicGeometryManager</code> (Class)</h2>
+<p>Manages large shared GPU geometry buffers with runtime allocation and deallocation support. Useful for streaming chunks, procedural terrain, voxel worlds, or dynamically generated meshes.</p>
+
+<h3>Constructor</h3>
+
+<h3><code>new DynamicGeometryManager(device, maxVertices, maxIndices, vertexStrideFloats?)</code></h3>
+
+<ul>
+    <li><strong>device</strong> (<code>GPUDevice</code>)</li>
+    <li><strong>maxVertices</strong> (<code>number</code>)</li>
+    <li><strong>maxIndices</strong> (<code>number</code>)</li>
+    <li><strong>vertexStrideFloats</strong> (<code>number</code>): Defaults to <code>6</code>.</li>
+</ul>
+
+<hr>
+
+<h3>Public Properties</h3>
+
+<ul>
+    <li><code><strong>vbo: GPUBuffer</strong></code><br>
+        Shared dynamic vertex buffer.</li>
+
+    ```
+    <li><code><strong>ibo: GPUBuffer</strong></code><br>
+        Shared dynamic index buffer.</li>
+    ```
+
+</ul>
+
+<hr>
+
+<h3>Methods</h3>
+
+<h3><code>addMesh(name, meshVertices, meshIndices)</code></h3>
+<p>Allocates space in the shared buffers and uploads geometry data directly to the GPU.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>)</li>
+    <li><strong>meshVertices</strong> (<code>Float32Array</code>)</li>
+    <li><strong>meshIndices</strong> (<code>Uint16Array | Uint32Array</code>)</li>
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+</ul>
+
+<h3><code>removeMesh(name)</code></h3>
+<p>Removes a mesh and returns its memory blocks back to the allocator’s free lists.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>)</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3><code>getOffset(name)</code></h3>
+<p>Retrieves the offset information for a registered mesh.</p>
+
+<ul>
+    <li><strong>name</strong> (<code>string</code>)</li>
+    <li><strong>Returns</strong>: <code>MeshOffset</code></li>
+</ul>
+
+<hr>
+
+<blockquote>
+    <p><strong>Implementation Note:</strong> <code>DynamicGeometryManager.removeMesh()</code> currently requires <code>vertexCount</code> to be tracked in <code>MeshOffset</code> for proper vertex memory reclamation. Without it, only partial free-list recovery is possible.</p>
+</blockquote>

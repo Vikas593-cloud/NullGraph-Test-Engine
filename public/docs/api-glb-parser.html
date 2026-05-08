@@ -1,0 +1,496 @@
+
+<blockquote>
+    <p>The <code>GLBParser</code> class provides a complete static parser for the custom GLB (GL Binary) format, loading 3D model data from URLs or raw <code>ArrayBuffer</code> instances. It handles scene graph traversal, skinned and static mesh extraction with dynamic vertex strides, transform baking, material texture URL resolution, skeletal skin data, and animation clip extraction — all with support for merging multi-mesh scenes into single GPU-ready geometry.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>GLBParser</code> (Class)</h2>
+
+<p>A fully static utility class for parsing GLB files into NullGraph-compatible geometry data, skin data, and animation data.</p>
+
+<p>All methods are static; no instantiation is required or intended.</p>
+
+<hr>
+
+<h2>Core Loading Methods</h2>
+
+<h3><code>GLBParser.load(url)</code></h3>
+
+<p>Fetches and parses a GLB file from a URL.</p>
+
+<ul>
+    <li>
+        <strong>url</strong> (<code>string</code>):<br>
+        The URL path to the GLB file to fetch.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>Promise&lt;GLBData&gt;</code><br>
+        A promise resolving to the parsed GLB data, containing meshes, optional skin data, optional animations, and optional image URLs.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Uses <code>fetch()</code> to download the binary file.</li>
+    <li>Converts the response to an <code>ArrayBuffer</code>.</li>
+    <li>Delegates to <code>GLBParser.parse()</code> for processing.</li>
+</ul>
+
+<hr>
+
+<h3><code>GLBParser.parse(arrayBuffer)</code></h3>
+
+<p>Parses a raw GLB binary buffer into structured geometry, skin, and animation data.</p>
+
+<ul>
+    <li>
+        <strong>arrayBuffer</strong> (<code>ArrayBuffer</code>):<br>
+        The raw binary data of a GLB file.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GLBData</code><br>
+        The parsed data structure containing meshes, skin, and animations.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ol>
+    <li>Validates the GLB magic number (<code>0x46546C67</code>).</li>
+    <li>Extracts and parses the JSON chunk as the glTF scene descriptor.</li>
+    <li>Locates the binary chunk offset for buffer data access.</li>
+    <li>Extracts image URLs (including embedded binary blobs) from the image array.</li>
+    <li>Traverses the default scene's node hierarchy, processing all meshes.</li>
+    <li>Extracts skin (skeleton) data if present.</li>
+    <li>Extracts animation clips if present.</li>
+</ol>
+
+<hr>
+
+<h2>Scene Graph Processing</h2>
+
+<h3><code>GLBParser.processNode(gltf, nodeIndex, parentMatrix, buffer, binOffset, geometries, imageUrls)</code> <em>(Private)</em></h3>
+
+<p>Recursively processes a scene graph node, applying hierarchical transforms and extracting geometry.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>any</code>): The parsed glTF JSON object.
+    </li>
+    <li>
+        <strong>nodeIndex</strong> (<code>number</code>): The index of the node to process.
+    </li>
+    <li>
+        <strong>parentMatrix</strong> (<code>Float32Array</code>): The accumulated world matrix from parent nodes.
+    </li>
+    <li>
+        <strong>buffer</strong> (<code>ArrayBuffer</code>): The raw binary buffer for geometry data.
+    </li>
+    <li>
+        <strong>binOffset</strong> (<code>number</code>): Byte offset to the start of the binary chunk.
+    </li>
+    <li>
+        <strong>geometries</strong> (<code>RawGeometryData[]</code>): Accumulator array for extracted geometries.
+    </li>
+    <li>
+        <strong>imageUrls</strong> (<code>string[]</code>): Array of resolved image URLs.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Computes the node's local transform matrix from TRS properties or explicit matrix data.</li>
+    <li>Multiplies with the parent matrix to obtain a world matrix.</li>
+    <li>If the node references a mesh, extracts all primitives.</li>
+    <li><strong>Static meshes</strong>: The world transform is baked directly into vertex positions and normals.</li>
+    <li><strong>Skinned meshes</strong>: Vertex data is kept in local space (no transform baking), and skinning attributes are extracted.</li>
+    <li>Recursively processes all child nodes with the computed world matrix.</li>
+</ul>
+
+<hr>
+
+<h3><code>GLBParser.bakeTransform(geom, matrix)</code> <em>(Private)</em></h3>
+
+<p>Bakes a world transform matrix into the vertex positions and normals of a static mesh.</p>
+
+<ul>
+    <li>
+        <strong>geom</strong> (<code>RawGeometryData</code>):<br>
+        The geometry whose vertices will be transformed in-place.
+    </li>
+    <li>
+        <strong>matrix</strong> (<code>Float32Array</code>):<br>
+        The 4×4 world transform matrix to apply.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Uses a fixed stride of 8 floats (position: 3, normal: 3, UV: 2) since it is never called on skinned meshes.</li>
+    <li>Transforms each vertex position using <code>MathUtils.transformPos</code>.</li>
+    <li>Transforms each vertex normal using <code>MathUtils.transformNorm</code>.</li>
+    <li>Overwrites the vertex data in-place.</li>
+</ul>
+
+<hr>
+
+<h2>Primitive Extraction</h2>
+
+<h3><code>GLBParser.extractPrimitive(gltf, buffer, binBufferOffset, primitive, isSkinned, imageUrls)</code> <em>(Private)</em></h3>
+
+<p>Extracts a single mesh primitive from the GLB data, returning <code>RawGeometryData</code> with a dynamic vertex layout.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>any</code>): The parsed glTF JSON.
+    </li>
+    <li>
+        <strong>buffer</strong> (<code>ArrayBuffer</code>): The raw binary buffer.
+    </li>
+    <li>
+        <strong>binBufferOffset</strong> (<code>number</code>): Byte offset to the binary chunk.
+    </li>
+    <li>
+        <strong>primitive</strong> (<code>any</code>): The glTF primitive object to extract.
+    </li>
+    <li>
+        <strong>isSkinned</strong> (<code>boolean</code>): Whether this primitive belongs to a skinned mesh.
+    </li>
+    <li>
+        <strong>imageUrls</strong> (<code>string[]</code>): Array of resolved image URLs for material texture lookup.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>RawGeometryData</code><br>
+        The extracted geometry with dynamic vertex layout.
+    </li>
+</ul>
+
+<h3>Dynamic Vertex Layout</h3>
+
+<p>The method uses a variable vertex stride depending on the skinning state:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Stride</th>
+        <th>Attributes</th>
+        <th>Shader Locations</th>
+        <th>Used For</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>8 floats (32 bytes)</strong></td>
+        <td>Position (3), Normal (3), UV (2)</td>
+        <td>@location(0), @location(1), @location(2)</td>
+        <td>Static meshes</td>
+    </tr>
+    <tr>
+        <td><strong>16 floats (64 bytes)</strong></td>
+        <td>Position (3), Normal (3), UV (2), Joints (4), Weights (4)</td>
+        <td>@location(0), @location(1), @location(2), @location(3), @location(4)</td>
+        <td>Skinned meshes</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Attribute Reading</h3>
+
+<p>Internal <code>readAttribute</code> helper supports multiple component types:</p>
+
+<ul>
+    <li><code>5126</code> (FLOAT) — Used for positions, normals, UVs, and weights.</li>
+    <li><code>5123</code> (UNSIGNED_SHORT) — Used for joint indices (common in glTF).</li>
+    <li><code>5121</code> (UNSIGNED_BYTE) — Used for joint indices (compact encoding).</li>
+</ul>
+
+<h3>Fallback Values</h3>
+
+<ul>
+    <li>Missing normals default to <code>(0, 1, 0)</code>.</li>
+    <li>Missing UVs default to <code>(0, 0)</code>.</li>
+    <li>Missing joint indices default to <code>0</code>.</li>
+    <li>Missing weights default to <code>1.0</code> (first weight channel).</li>
+</ul>
+
+<h3>Index Buffer Handling</h3>
+
+<p>Supports three index component types:</p>
+
+<ul>
+    <li><code>5125</code> (UNSIGNED_INT) — Produces <code>Uint32Array</code>.</li>
+    <li><code>5123</code> (UNSIGNED_SHORT) — Produces <code>Uint16Array</code>.</li>
+    <li><code>5121</code> (UNSIGNED_BYTE) — Produces <code>Uint16Array</code> (values upcast).</li>
+</ul>
+
+<h3>Material Texture Extraction</h3>
+
+<p>Resolves texture URLs from the glTF material definition:</p>
+
+<ul>
+    <li><strong>Albedo</strong>: From <code>pbrMetallicRoughness.baseColorTexture</code>.</li>
+    <li><strong>Metallic-Roughness</strong>: From <code>pbrMetallicRoughness.metallicRoughnessTexture</code>.</li>
+    <li><strong>Normal</strong>: From <code>material.normalTexture</code>.</li>
+    <li><strong>Occlusion</strong>: From <code>material.occlusionTexture</code>.</li>
+    <li><strong>Emissive</strong>: From <code>material.emissiveTexture</code>.</li>
+</ul>
+
+<p>Each URL is resolved from the <code>imageUrls</code> array using the texture's <code>source</code> index.</p>
+
+<hr>
+
+<h2>Mesh Merging</h2>
+
+<h3><code>GLBParser.loadMerged(url)</code></h3>
+
+<p>Loads a GLB file and merges all meshes into a single combined geometry object.</p>
+
+<ul>
+    <li>
+        <strong>url</strong> (<code>string</code>):<br>
+        The URL path to the GLB file.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>Promise&lt;GLBData&gt;</code><br>
+        A promise resolving to GLB data containing a single merged mesh in the <code>meshes</code> array, plus any skin and animation data.
+    </li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Loads the file using <code>GLBParser.load()</code>.</li>
+    <li>If only one mesh exists, returns the data unchanged.</li>
+    <li>If multiple meshes exist:
+        <ul>
+            <li>Calculates the total vertex count and total index count.</li>
+            <li>Creates a merged vertex buffer using the stride of the first mesh (ensuring consistency for skinned vs. static).</li>
+            <li>Creates a merged <code>Uint32Array</code> index buffer with corrected index offsets.</li>
+            <li>Preserves the WebGPU vertex layout function from the first mesh.</li>
+        </ul>
+    </li>
+    <li>Returns a new <code>GLBData</code> object with the single merged mesh.</li>
+</ul>
+
+<h3>Note</h3>
+
+<p>Merging is only safe when all meshes share the same skinning state and vertex layout. Mixing static and skinned meshes will produce incorrect results.</p>
+
+<hr>
+
+<h2>Skin Data Extraction</h2>
+
+<h3><code>GLBParser.extractSkin(gltf, buffer, binBufferOffset)</code></h3>
+
+<p>Extracts skeletal skinning data from the glTF file.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>any</code>): The parsed glTF JSON.
+    </li>
+    <li>
+        <strong>buffer</strong> (<code>ArrayBuffer</code>): The raw binary buffer.
+    </li>
+    <li>
+        <strong>binBufferOffset</strong> (<code>number</code>): Byte offset to the binary chunk.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GLBSkin | null</code><br>
+        The extracted skin data, or <code>null</code> if no skin is present.
+    </li>
+</ul>
+
+<h3><code>GLBSkin</code> Data Structure</h3>
+
+<ul>
+    <li>
+        <code><strong>joints: number[]</strong></code> — Array of node indices that form the skeleton's joints.
+    </li>
+    <li>
+        <code><strong>inverseBindMatrices: Float32Array</strong></code> — Flattened array of 4×4 inverse bind matrices (one per joint).
+    </li>
+    <li>
+        <code><strong>nodes: any[]</strong></code> — Reference to the glTF nodes array for bone hierarchy lookup.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Animation Extraction</h2>
+
+<h3><code>GLBParser.extractAnimations(gltf, buffer, binBufferOffset)</code></h3>
+
+<p>Extracts animation clips from the glTF file.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>any</code>): The parsed glTF JSON.
+    </li>
+    <li>
+        <strong>buffer</strong> (<code>ArrayBuffer</code>): The raw binary buffer.
+    </li>
+    <li>
+        <strong>binBufferOffset</strong> (<code>number</code>): Byte offset to the binary chunk.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>GLBAnimation[]</code><br>
+        Array of animation clips (empty if none present).
+    </li>
+</ul>
+
+<h3><code>GLBAnimation</code> Data Structure</h3>
+
+<ul>
+    <li>
+        <code><strong>name: string</strong></code> — Animation name (defaults to <code>'Animation'</code>).
+    </li>
+    <li>
+        <code><strong>channels: Array</strong></code> — Channel descriptors:
+        <ul>
+            <li><code>targetNode: number</code> — Index of the target node.</li>
+            <li><code>path: string</code> — Animated property path (<code>'translation'</code>, <code>'rotation'</code>, or <code>'scale'</code>).</li>
+            <li><code>samplerIndex: number</code> — Index into the samplers array.</li>
+        </ul>
+    </li>
+    <li>
+        <code><strong>samplers: Array</strong></code> — Sampler descriptors:
+        <ul>
+            <li><code>input: Float32Array</code> — Keyframe time values.</li>
+            <li><code>output: Float32Array</code> — Keyframe data (vec3 for translation/scale, vec4 for rotation quaternions).</li>
+            <li><code>interpolation: string</code> — Interpolation type (<code>'LINEAR'</code>, <code>'STEP'</code>, or <code>'CUBICSPLINE'</code>).</li>
+        </ul>
+    </li>
+    <li>
+        <code><strong>maxTime: number</strong></code> — The maximum keyframe time in the animation (duration).
+    </li>
+</ul>
+
+<hr>
+
+<h2>Image URL Management</h2>
+
+<h3><code>GLBParser.extractImageURLs(gltf, buffer, binBufferOffset)</code></h3>
+
+<p>Extracts and resolves image URLs from the glTF image array.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>any</code>): The parsed glTF JSON.
+    </li>
+    <li>
+        <strong>buffer</strong> (<code>ArrayBuffer</code>): The raw binary buffer.
+    </li>
+    <li>
+        <strong>binBufferOffset</strong> (<code>number</code>): Byte offset to the binary chunk.
+    </li>
+    <li>
+        <strong>Returns</strong>: <code>string[]</code><br>
+        Array of resolved image URLs, aligned with the glTF image index.
+    </li>
+</ul>
+
+<h3>Supported Image Sources</h3>
+
+<ul>
+    <li><strong>Data URIs</strong>: Returns the embedded Base64 string directly.</li>
+    <li><strong>Buffer Views</strong>: Extracts binary image data, creates a <code>Blob</code> with the declared MIME type (defaults to <code>'image/png'</code>), and returns an <code>ObjectURL</code> via <code>URL.createObjectURL</code>.</li>
+    <li><strong>Missing/Unsupported</strong>: Returns an empty string.</li>
+</ul>
+
+<hr>
+
+<h3><code>GLBParser.disposeImages(gltf)</code></h3>
+
+<p>Revokes all blob URLs created during image extraction to prevent memory leaks.</p>
+
+<ul>
+    <li>
+        <strong>gltf</strong> (<code>GLBData</code>):<br>
+        The parsed GLB data object containing an <code>imageUrls</code> array.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Iterates over all URLs in the <code>imageUrls</code> array.</li>
+    <li>Calls <code>URL.revokeObjectURL</code> on each to release memory.</li>
+    <li>Should be called when the GLB data and its associated textures are no longer needed.</li>
+</ul>
+
+<hr>
+
+<h2>Return Data Structure</h2>
+
+<h3><code>GLBData</code> (Interface)</h3>
+
+<p>The top-level data structure returned by all load and parse methods.</p>
+
+<ul>
+    <li>
+        <code><strong>meshes: RawGeometryData[]</strong></code> — Array of extracted geometry objects.
+    </li>
+    <li>
+        <code><strong>skin: GLBSkin | null</strong></code> — Skeletal skinning data if present, otherwise <code>null</code>.
+    </li>
+    <li>
+        <code><strong>animations: GLBAnimation[]</strong></code> — Array of animation clips.
+    </li>
+    <li>
+        <strong><code>imageUrls?: string[]</code></strong> — <em>Optional</em>. Array of resolved image URLs, present when loaded via <code>load()</code> or <code>parse()</code>. Not present in merged output.
+    </li>
+</ul>
+
+<h3><code>RawGeometryData</code> (Interface)</h3>
+
+<ul>
+    <li><code><strong>vertices: Float32Array</strong></code> — Interleaved vertex data.</li>
+    <li><code><strong>indices: Uint16Array | Uint32Array</strong></code> — Index buffer data.</li>
+    <li><code><strong>indexCount: number</strong></code> — Total number of indices.</li>
+    <li><code><strong>vertexCount: number</strong></code> — Total number of vertices.</li>
+    <li><code><strong>isSkinned: boolean</strong></code> — Whether the geometry uses skinning.</li>
+    <li><code><strong>albedoUrl?: string</strong></code> — Resolved URL for the albedo/base color texture.</li>
+    <li><code><strong>normalUrl?: string</strong></code> — Resolved URL for the normal map texture.</li>
+    <li><code><strong>metallicRoughnessUrl?: string</strong></code> — Resolved URL for the metallic-roughness texture.</li>
+    <li><code><strong>occlusionUrl?: string</strong></code> — Resolved URL for the occlusion texture.</li>
+    <li><code><strong>emissiveUrl?: string</strong></code> — Resolved URL for the emissive texture.</li>
+    <li><code><strong>getWebGPULayout: () => GPUVertexBufferLayout[]</strong></code> — Function returning the WebGPU vertex buffer layout descriptor(s) for this geometry.</li>
+</ul>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { GLBParser } from './GLBParser';
+
+// Load a GLB file (single or multi-mesh)
+const glbData = await GLBParser.load('models/character.glb');
+
+// Access extracted data
+for (const mesh of glbData.meshes) {
+    console.log(`Mesh: ${mesh.vertexCount} vertices, ${mesh.indexCount} indices`);
+    console.log(`Skinned: ${mesh.isSkinned}`);
+    console.log(`Albedo: ${mesh.albedoUrl}`);
+}
+
+// Get WebGPU vertex layout for buffer creation
+const layout = glbData.meshes[0].getWebGPULayout();
+
+// Check for animations
+if (glbData.animations.length > 0) {
+    console.log(`Animation: ${glbData.animations[0].name}`);
+    console.log(`Duration: ${glbData.animations[0].maxTime}s`);
+}
+
+// Clean up blob URLs when finished
+GLBParser.disposeImages(glbData);
+
+// Alternatively, load and merge all meshes into one
+const mergedData = await GLBParser.loadMerged('models/level.glb');
+const singleMesh = mergedData.meshes[0]; // Single combined geometry
+</code></pre>

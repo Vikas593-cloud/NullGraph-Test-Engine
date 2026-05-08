@@ -97,18 +97,55 @@
     font-size: 0.85rem;
 }
 
-@media (max-width: 768px) {
-    #sidebar {
-        z-index: 150;
-        height: 100dvh;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-    }
-    #sidebar-toggle {
-        right: -44px;
-        top: 15px;
-        z-index: 200;
-    }
-    .sidebar-scroll-area {
-        padding: 20px;
-    }
+/* --- Collapsible Nav Groups --- */
+.nav-group {
+    margin-bottom: 4px;
+}
+
+.nav-group-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #aaa;
+    transition: all 0.2s ease;
+    list-style: none; /* Removes default browser arrow */
+    position: relative;
+    user-select: none;
+    border-left: 3px solid transparent;
+}
+
+/* Remove Safari/Webkit specific marker */
+.nav-group-title::-webkit-details-marker {
+    display: none;
+}
+
+.nav-group-title:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+/* Custom Animated Dropdown Arrow */
+.nav-group-title::after {
+    content: '▼';
+    font-size: 0.6rem;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    transition: transform 0.2s ease;
+    color: #777;
+}
+
+/* Rotate arrow when details is open */
+details[open] > .nav-group-title::after {
+    transform: translateY(-50%) rotate(0deg);
+    color: var(--accent-color);
+}
+
+/* Indent the children slightly */
+.nav-group-content {
+    padding-left: 8px;
+    margin-top: 4px;
 }

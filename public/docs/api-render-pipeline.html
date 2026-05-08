@@ -1,0 +1,391 @@
+
+<blockquote>
+    <p>The <code>RenderPipeline</code> and <code>RenderPassNode</code> classes form NullGraph's high-level render orchestration system. <code>RenderPassNode</code> defines a logical render pass with its attachments and draw batches, while <code>RenderPipeline</code> executes a sequence of passes — handling indirect draw reset, compute-based instance culling, main screen pass resolution, and final command submission to the GPU.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>RenderPassNode</code> (Class)</h2>
+
+<p>Represents a single logical render pass in the frame graph. It holds the pass's color and depth attachments, a list of render batches to execute, and metadata including whether this pass writes directly to the HTML canvas.</p>
+
+<hr>
+
+<h3>Constructor</h3>
+
+<h4><code>new RenderPassNode(config)</code></h4>
+
+<p>Creates a new render pass node with the specified configuration.</p>
+
+<ul>
+    <li>
+        <strong>config</strong> (<code>RenderPassConfig</code>):<br>
+        Configuration object specifying the pass name, target type, and optional custom attachments.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Configuration Interface</h3>
+
+<h4><code>RenderPassConfig</code> (Interface)</h4>
+
+<ul>
+    <li>
+        <code><strong>name: string</strong></code><br>
+        A descriptive name for the render pass (e.g., <code>"ShadowMap"</code>, <code>"GBuffer"</code>, <code>"Forward"</code>). Used for debugging and identification in the pipeline.
+    </li>
+    <li>
+        <code><strong>isMainScreenPass: boolean</strong></code><br>
+        If <code>true</code>, the render pipeline will automatically resolve this pass's color attachment to the HTML canvas's current texture and use the engine's default depth texture. Custom <code>colorAttachments</code> and <code>depthStencilAttachment</code> are ignored when this flag is set.
+    </li>
+    <li>
+        <code><strong>colorAttachments?: GPURenderPassColorAttachment[]</strong></code><br>
+        Optional. Custom color attachments for offscreen rendering (e.g., G-Buffer targets, post-processing textures). Ignored if <code>isMainScreenPass</code> is <code>true</code>.
+    </li>
+    <li>
+        <code><strong>depthStencilAttachment?: GPURenderPassDepthStencilAttachment</strong></code><br>
+        Optional. Custom depth/stencil attachment (e.g., for shadow map passes). Ignored if <code>isMainScreenPass</code> is <code>true</code>.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Public Properties</h3>
+
+<ul>
+    <li>
+        <code><strong>name: string</strong></code><br>
+        The pass name as provided in the configuration.
+    </li>
+    <li>
+        <code><strong>isMainScreenPass: boolean</strong></code><br>
+        Whether this pass renders directly to the swap chain / HTML canvas.
+    </li>
+    <li>
+        <code><strong>batches: RenderBatch[]</strong></code><br>
+        The ordered array of render batches to execute during this pass. Each batch contains pipeline state, bind groups, buffers, and instance count.
+    </li>
+    <li>
+        <code><strong>colorAttachments: GPURenderPassColorAttachment[]</strong></code><br>
+        The resolved color attachments for this pass. For main screen passes, this is populated by the pipeline just before rendering; for offscreen passes, it is taken from the configuration.
+    </li>
+    <li>
+        <code><strong>depthStencilAttachment?: GPURenderPassDepthStencilAttachment</strong></code><br>
+        The resolved depth/stencil attachment, if any.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Batch Management</h3>
+
+<h4><code>addBatch(batch)</code></h4>
+
+<p>Appends a render batch to this pass's execution list.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The render batch to add.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<p>Batches are executed in insertion order during rendering.</p>
+
+<hr>
+
+<h4><code>removeBatch(batch)</code></h4>
+
+<p>Removes a render batch from this pass's execution list.</p>
+
+<ul>
+    <li>
+        <strong>batch</strong> (<code>RenderBatch</code>):<br>
+        The render batch to remove. Must be the same object reference that was previously added.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Locates the batch in the internal array using reference equality (<code>indexOf</code>).</li>
+    <li>If found, removes it via <code>splice</code>.</li>
+    <li>If the batch is not present in the array, the method silently does nothing.</li>
+</ul>
+
+<hr>
+
+<h2><code>RenderPipeline</code> (Class)</h2>
+
+<p>Executes a sequence of <code>RenderPassNode</code> instances, translating them into WebGPU command buffers and submitting them to the device queue. It handles two critical pre-render steps: resetting indirect draw instance counts for GPU-culled batches, and dispatching compute shaders for instance culling.</p>
+
+<hr>
+
+<h3>Constructor</h3>
+
+<h4><code>new RenderPipeline(ctx)</code></h4>
+
+<p>Creates a new render pipeline bound to a WebGPU context.</p>
+
+<ul>
+    <li>
+        <strong>ctx</strong> (<code>WebGPUContext</code>):<br>
+        The WebGPU context providing the device, canvas context, and default depth texture.
+    </li>
+</ul>
+
+<hr>
+
+<h3>Public Methods</h3>
+
+<h4><code>render(passes)</code></h4>
+
+<p>Executes the full render sequence for the given array of render passes.</p>
+
+<ul>
+    <li>
+        <strong>passes</strong> (<code>RenderPassNode[]</code>):<br>
+        An ordered array of render passes to execute. Empty arrays cause an early return with no GPU work submitted.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Execution Pipeline</h3>
+
+<p>For each <code>RenderPassNode</code> in the array, the pipeline performs the following sequence:</p>
+
+<hr>
+
+<h4>Phase 1: Indirect Draw Reset</h4>
+
+<p>Before any rendering, the pipeline scans all batches in the current pass for those marked as indirect (<code>batch.isIndirect === true</code>). For each such batch:</p>
+
+<ul>
+    <li>Writes zero to the indirect buffer's <code>instanceCount</code> field (offset 4 bytes — the second <code>uint32</code> in the <code>drawIndexedIndirect</code> structure). This resets the instance count so that if the compute culling shader does not write a new count, the draw call will render zero instances.</li>
+    <li>Flags the pass as requiring a compute phase (<code>hasCompute = true</code>).</li>
+</ul>
+
+<p>The zero value is written using a shared <code>Uint32Array([0])</code> to minimize allocations across all resets.</p>
+
+<hr>
+
+<h4>Phase 2: Compute Pass (Instance Culling)</h4>
+
+<p>If the pass contains any indirect batches (<code>hasCompute === true</code>), a single compute pass is opened. For each indirect batch:</p>
+
+<ul>
+    <li>Sets the batch's compute pipeline and bind group (binding 0).</li>
+    <li>Sets any additional custom compute bind groups (bindings 1+).</li>
+    <li>Calculates the workgroup count as <code>ceil(currentInstanceCount / 64)</code>.</li>
+    <li>Dispatches the compute shader if the workgroup count is greater than zero.</li>
+</ul>
+
+<p>This compute phase is responsible for GPU-side frustum/occlusion culling — testing each instance and writing the surviving count and indices into the indirect buffer.</p>
+
+<hr>
+
+<h4>Phase 3: Attachment Resolution</h4>
+
+<p>The pass's color and depth attachments are resolved based on the <code>isMainScreenPass</code> flag:</p>
+
+<ul>
+    <li><strong>Main Screen Pass</strong> (<code>isMainScreenPass === true</code>):
+        <ul>
+            <li><strong>Color</strong>: Uses the canvas's current texture view (via <code>ctx.context.getCurrentTexture().createView()</code>) with a dark gray clear color (<code>{r: 0.05, g: 0.05, b: 0.05, a: 1.0}</code>), <code>loadOp: 'clear'</code>, and <code>storeOp: 'store'</code>.</li>
+            <li><strong>Depth</strong>: Uses the engine's shared depth texture view with a clear value of <code>1.0</code>, <code>depthLoadOp: 'clear'</code>, and <code>depthStoreOp: 'store'</code>.</li>
+            <li>Any custom attachments from the pass configuration are <strong>ignored</strong>.</li>
+        </ul>
+    </li>
+    <li><strong>Offscreen Pass</strong> (<code>isMainScreenPass === false</code>):
+        <ul>
+            <li>Uses the custom <code>colorAttachments</code> and <code>depthStencilAttachment</code> directly from the pass configuration.</li>
+        </ul>
+    </li>
+</ul>
+
+<hr>
+
+<h4>Phase 4: Render Pass Execution</h4>
+
+<p>A render pass encoder is opened with the resolved attachments. For each batch in the pass:</p>
+
+<ol>
+    <li><strong>Skip Empty Static Batches</strong>: If the batch is not indirect and its <code>currentInstanceCount</code> is <code>0</code>, it is skipped entirely.</li>
+    <li><strong>Set Pipeline</strong>: <code>passEncoder.setPipeline(batch.pipeline)</code></li>
+    <li><strong>Set Bind Groups</strong>:
+        <ul>
+            <li>Bind group 0 is always set from <code>batch.bindGroup</code>.</li>
+            <li>Additional bind groups (1+) are set from <code>batch.customBindGroups</code>, keyed by string group indices parsed as integers.</li>
+        </ul>
+    </li>
+    <li><strong>Set Buffers</strong>:
+        <ul>
+            <li>Vertex buffer at slot 0: <code>batch.vertexBuffer</code> (if set).</li>
+            <li>Index buffer: <code>batch.indexBuffer</code> with the batch's <code>indexFormat</code> (if set).</li>
+        </ul>
+    </li>
+    <li><strong>Issue Draw Call</strong> (mutually exclusive — determined by available data):
+        <ul>
+            <li><strong>Indirect Indexed</strong>: <code>drawIndexedIndirect(batch.indirectBuffer, 0)</code> — Used when <code>batch.isIndirect</code> is <code>true</code> and an indirect buffer is present. The GPU reads draw parameters from the buffer.</li>
+            <li><strong>Direct Indexed</strong>: <code>drawIndexed(indexCount, instanceCount, 0, 0, 0)</code> — Used when both vertex and index buffers are present and the batch is not indirect.</li>
+            <li><strong>Direct Non-Indexed</strong>: <code>draw(3, instanceCount, 0, 0)</code> — Fallback for batches without index buffers (e.g., fullscreen triangles for post-processing). Always draws 3 vertices.</li>
+        </ul>
+    </li>
+</ol>
+
+<hr>
+
+<h4>Phase 5: Submission</h4>
+
+<p>After all passes have been encoded, the command buffer is finished and submitted to the device queue:</p>
+
+<pre><code>this.ctx.device.queue.submit([commandEncoder.finish()]);
+</code></pre>
+
+<p>All passes in the array are submitted together in a single command buffer, ensuring they execute in order on the GPU timeline.</p>
+
+<hr>
+
+<h2>Render Batch Structure</h2>
+
+<h3><code>RenderBatch</code> (Interface — from <code>"./types"</code>)</h3>
+
+<p>The <code>RenderBatch</code> object is the fundamental unit of work within a render pass. Its expected shape includes:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Property</th>
+        <th>Type</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>pipeline</code></td>
+        <td><code>GPURenderPipeline</code></td>
+        <td>The render pipeline state to use for drawing</td>
+    </tr>
+    <tr>
+        <td><code>bindGroup</code></td>
+        <td><code>GPUBindGroup</code></td>
+        <td>The primary bind group (group 0) — typically camera/engine uniforms</td>
+    </tr>
+    <tr>
+        <td><code>customBindGroups</code></td>
+        <td><code>Record&lt;string, GPUBindGroup&gt;</code></td>
+        <td>Optional additional bind groups (group 1+), keyed by group index as string</td>
+    </tr>
+    <tr>
+        <td><code>vertexBuffer</code></td>
+        <td><code>GPUBuffer</code></td>
+        <td>Vertex buffer at slot 0</td>
+    </tr>
+    <tr>
+        <td><code>indexBuffer</code></td>
+        <td><code>GPUBuffer</code></td>
+        <td>Index buffer</td>
+    </tr>
+    <tr>
+        <td><code>indexFormat</code></td>
+        <td><code>GPUIndexFormat</code></td>
+        <td>Format of the index buffer (<code>'uint16'</code> or <code>'uint32'</code>)</td>
+    </tr>
+    <tr>
+        <td><code>indexCount</code></td>
+        <td><code>number</code></td>
+        <td>Number of indices for direct indexed draws</td>
+    </tr>
+    <tr>
+        <td><code>currentInstanceCount</code></td>
+        <td><code>number</code></td>
+        <td>Current instance count for direct draws; also used to calculate compute workgroup count</td>
+    </tr>
+    <tr>
+        <td><code>isIndirect</code></td>
+        <td><code>boolean</code></td>
+        <td>Whether this batch uses indirect drawing (GPU-driven instance count)</td>
+    </tr>
+    <tr>
+        <td><code>indirectBuffer</code></td>
+        <td><code>GPUBuffer</code></td>
+        <td>The indirect draw buffer (present if <code>isIndirect</code> is <code>true</code>)</td>
+    </tr>
+    <tr>
+        <td><code>computePipeline</code></td>
+        <td><code>GPUComputePipeline</code></td>
+        <td>Compute pipeline for instance culling (present if <code>isIndirect</code> is <code>true</code>)</td>
+    </tr>
+    <tr>
+        <td><code>computeBindGroup</code></td>
+        <td><code>GPUBindGroup</code></td>
+        <td>Primary compute bind group (group 0) for culling</td>
+    </tr>
+    <tr>
+        <td><code>computeCustomBindGroups</code></td>
+        <td><code>Record&lt;string, GPUBindGroup&gt;</code></td>
+        <td>Optional additional compute bind groups (group 1+)</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { WebGPUContext } from './WebGPUContext';
+import { RenderPipeline } from './RenderPipeline';
+import { RenderPassNode } from './RenderPass';
+
+// Create pipeline
+const ctx = new WebGPUContext(/* ... */);
+const pipeline = new RenderPipeline(ctx);
+
+// Define passes
+const shadowPass = new RenderPassNode({
+    name: 'ShadowMap',
+    isMainScreenPass: false,
+    colorAttachments: [],  // No color output for shadow pass
+    depthStencilAttachment: {
+        view: shadowDepthView,
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+    }
+});
+
+const mainPass = new RenderPassNode({
+    name: 'Main',
+    isMainScreenPass: true  // Renders directly to canvas
+});
+
+// Add batches to passes
+shadowPass.addBatch(shadowBatch);
+mainPass.addBatch(skyboxBatch);
+mainPass.addBatch(opaqueBatch);
+mainPass.addBatch(transparentBatch);
+
+// Execute each frame
+function frame() {
+    pipeline.render([shadowPass, mainPass]);
+}
+</code></pre>
+
+<hr>
+
+<h2>Execution Order Summary</h2>
+
+<p>For a pipeline with passes <code>[PassA, PassB, PassC]</code>, the GPU timeline is:</p>
+
+<pre><code>
+PassA: [Indirect Reset] → [Compute Culling] → [Render Attachments] → [Draw Batches]
+PassB: [Indirect Reset] → [Compute Culling] → [Render Attachments] → [Draw Batches]
+PassC: [Indirect Reset] → [Compute Culling] → [Render Attachments] → [Draw Batches]
+                                                                          │
+                                                                    [GPU Submit]
+</code></pre>
+
+<p>All phases for all passes are encoded into a single command buffer and submitted atomically. The GPU executes passes sequentially with full pipeline barriers between them.</p>

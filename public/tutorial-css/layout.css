@@ -1,0 +1,61 @@
+.ide-root {
+    display: grid;
+    /* 48px wide activity bar, the rest (1fr) is workspace */
+    grid-template-columns: 48px 1fr;
+    /* Fill remaining height (1fr), bottom 22px for status bar */
+    grid-template-rows: 1fr 22px;
+    grid-template-areas:
+        "activity workspace"
+        "status status";
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.activity-bar {
+    grid-area: activity;
+    background-color: var(--bg-activity);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-right: 1px solid var(--border-color);
+}
+
+.workspace {
+    grid-area: workspace;
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+
+/* Panes */
+.pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.pane-left {
+    width: 50%;
+    background-color: var(--bg-editor);
+}
+
+.pane-right {
+    width: 50%;
+    background-color: #000;
+}
+
+/* The Draggable-looking Splitter */
+.pane-resizer {
+    width: 4px;
+    background-color: var(--border-resizer);
+    cursor: col-resize;
+    transition: background-color 0.2s;
+    z-index: 10;
+}
+
+.pane-resizer:hover {
+    background-color: var(--vscode-blue);
+}

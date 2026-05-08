@@ -1,0 +1,20 @@
+.engine-drawer {
+    flex-shrink: 0; /* Prevents drawer from getting squished */
+    background: rgba(8, 8, 11, 0.98); /* Slightly darker to differentiate */
+    border-top: 1px solid var(--border-light);
+    padding: 24px;
+    padding-bottom: 30px; /* Extra padding for bottom screen edge */
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.4); /* Shadow casting UPWARDS */
+    max-height: 50vh; /* Prevents controls from taking over the whole screen */
+    overflow-y: auto; /* Scrolls internally if controls get too long */
+}
+
+.engine-drawer .panel-header {
+    margin-bottom: 20px; /* Tighter spacing for the drawer */
+}
+
+.engine-accordion summary {
+    background: rgba(0, 255, 204, 0.1);
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-light);
+}

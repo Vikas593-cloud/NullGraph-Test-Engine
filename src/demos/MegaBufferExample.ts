@@ -1,56 +1,7 @@
 // demos/MegabufferExample.ts
-import {NullGraph, Camera, MegabufferBuilder, RenderBatch} from 'null-graph';
-import {GeometryBuilder, StandardLayout} from "null-graph/geometry";
-
-// --- PROCEDURAL GEOMETRY GENERATORS ---
-function generateProceduralAsteroid(numSides: number, radius: number, isCrystal: boolean) {
-    const builder = new GeometryBuilder(StandardLayout);
-    const heightMult = isCrystal ? 2.5 : 1.0;
-
-    // 1. Add Top and Bottom points
-    const topIdx = builder.addVertex({
-        position: [0, radius * heightMult, 0],
-        normal: [0, 1, 0],
-        uv: [0.5, 1.0]
-    });
-
-    const btmIdx = builder.addVertex({
-        position: [0, -radius * heightMult, 0],
-        normal: [0, -1, 0],
-        uv: [0.5, 0.0]
-    });
-
-    // 2. Add the middle ring
-    const ringStartIdx = topIdx + 2; // The next vertex added will be index 2
-
-    for (let i = 0; i < numSides; i++) {
-        const angle = (i / numSides) * Math.PI * 2;
-        // Crystals are sharper, asteroids are rounder
-        const r = radius * (isCrystal ? (0.3 + Math.random() * 0.7) : (0.7 + Math.random() * 0.3));
-        const x = Math.cos(angle) * r;
-        const z = Math.sin(angle) * r;
-
-        builder.addVertex({
-            position: [x, (Math.random() - 0.5) * radius * 0.5, z],
-            normal: [x, 0.5, z], // Keeping your original radial normal logic
-            uv: [i / numSides, 0.5]
-        });
-    }
-
-    // 3. Stitch the indices together
-    for (let i = 0; i < numSides; i++) {
-        const next = (i + 1) % numSides;
-
-        // Top half triangle
-        builder.addTriangle(topIdx, ringStartIdx + i, ringStartIdx + next);
-
-        // Bottom half triangle
-        builder.addTriangle(btmIdx, ringStartIdx + next, ringStartIdx + i);
-    }
-
-    // Returns { v: Float32Array, i: Uint16Array }
-    return builder.build();
-}
+import {NullGraph, Camera, RenderBatch} from 'null-graph';
+import {generateProceduralAsteroid} from "../data/geometryData";
+import {MegabufferBuilder} from "null-graph/geometry";
 
 export async function setupMegabuffer(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
     const MAX_INSTANCES = 100000; // Let's push it!

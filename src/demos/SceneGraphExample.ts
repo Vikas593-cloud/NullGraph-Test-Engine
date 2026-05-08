@@ -1,6 +1,6 @@
 // demos/SceneGraphExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import {cubeIndices, cubeVertices, quadIndices, quadVertices} from "../data";
+import {cubeIndices, cubeVertices, quadIndices, quadVertices} from "../data/geometryData";
 
 class SceneNode {
     // NEW: We tag the node so we know which batch it belongs to!

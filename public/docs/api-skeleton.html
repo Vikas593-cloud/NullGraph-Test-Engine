@@ -1,0 +1,233 @@
+Here is the API reference for the `SkeletonManager` class, formatted in the requested style.
+
+---
+
+<blockquote>
+    <p>The <code>SkeletonManager</code> class manages the GPU-side uniform buffer for skeletal animation data in NullGraph. It allocates a fixed-size buffer for bone matrices, provides initialization to identity (bind pose), and offers a streamlined update path from an <code>Animator</code> instance — bridging the gap between CPU animation evaluation and GPU shader consumption.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>SkeletonManager</code> (Class)</h2>
+
+<p>Wraps a WebGPU uniform buffer that holds an array of 4×4 bone transformation matrices for hardware skinning. The buffer is sized to accommodate a configurable maximum number of bones and is designed for per-frame updates from an external animation system.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new SkeletonManager(device, maxBones?)</code></h3>
+
+<p>Creates a new skeleton manager, allocating a GPU uniform buffer for bone matrices and initializing it to the identity bind pose.</p>
+
+<ul>
+    <li>
+        <strong>device</strong> (<code>GPUDevice</code>):<br>
+        The WebGPU device used for buffer allocation and data upload.
+    </li>
+    <li>
+        <strong>maxBones</strong> (<code>number</code>):<br>
+        Optional. The maximum number of bones (4×4 matrices) to allocate space for.<br>
+        Defaults to <code>70</code>, matching the WGSL shader array size <code>array&lt;mat4x4&lt;f32&gt;, 70&gt;</code> defined in <code>PBRChunks.SkinningBindings</code>.
+    </li>
+</ul>
+
+<h3>GPU Buffer Allocation</h3>
+
+<p>The internal bone buffer is created with the following properties:</p>
+
+<ul>
+    <li><strong>Size</strong>: <code>maxBones × 16 × 4</code> bytes (16 floats per 4×4 matrix, 4 bytes per <code>f32</code>)</li>
+    <li><strong>Usage</strong>: <code>GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST</code></li>
+    <li>Allocated once at construction time and reused across all frames</li>
+</ul>
+
+<hr>
+
+<h2>Public Properties</h2>
+
+<ul>
+    <li>
+        <code><strong>boneBuffer: GPUBuffer</strong></code><br>
+        The GPU uniform buffer containing the flattened array of bone matrices.<br>
+        This buffer is intended to be bound to the shader's skeleton bind group (group 2, binding 0 in the standard PBR pipeline).
+    </li>
+    <li>
+        <code><strong>maxBones: number</strong></code><br>
+        The maximum number of bones this skeleton supports. Determined at construction time.
+    </li>
+</ul>
+
+<hr>
+
+<h2>Buffer Initialization</h2>
+
+<h3><code>resetToBindPose(device)</code></h3>
+
+<p>Resets all bone matrices in the GPU buffer to identity, representing the neutral bind pose.</p>
+
+<ul>
+    <li>
+        <strong>device</strong> (<code>GPUDevice</code>):<br>
+        The WebGPU device used for the buffer write operation.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Constructs a <code>Float32Array</code> of length <code>maxBones × 16</code>.</li>
+    <li>Sets each 4×4 matrix to identity by writing <code>1.0</code> to the diagonal elements (indices 0, 5, 10, and 15 within each 16-float block).</li>
+    <li>Uploads the identity array to the GPU buffer via <code>device.queue.writeBuffer</code>.</li>
+</ul>
+
+<h3>Use Cases</h3>
+
+<ul>
+    <li>Initialization immediately after construction.</li>
+    <li>Resetting a character to bind pose when no animation is playing.</li>
+    <li>Switching between animated and static rendering modes.</li>
+</ul>
+
+<h3>Identity Matrix Layout</h3>
+
+<p>Each 16-float block within the buffer represents a column-major 4×4 matrix:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Float Index (local)</th>
+        <th>Matrix Element</th>
+        <th>Value</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td>Row 0, Col 0</td>
+        <td>1</td>
+    </tr>
+    <tr>
+        <td>1–4</td>
+        <td>...</td>
+        <td>0</td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td>Row 1, Col 1</td>
+        <td>1</td>
+    </tr>
+    <tr>
+        <td>6–9</td>
+        <td>...</td>
+        <td>0</td>
+    </tr>
+    <tr>
+        <td>10</td>
+        <td>Row 2, Col 2</td>
+        <td>1</td>
+    </tr>
+    <tr>
+        <td>11–14</td>
+        <td>...</td>
+        <td>0</td>
+    </tr>
+    <tr>
+        <td>15</td>
+        <td>Row 3, Col 3</td>
+        <td>1</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Animation Update</h2>
+
+<h3><code>updateFromAnimator(device, animator)</code></h3>
+
+<p>Uploads the current frame's skinning matrices from an <code>Animator</code> instance to the GPU buffer.</p>
+
+<ul>
+    <li>
+        <strong>device</strong> (<code>GPUDevice</code>):<br>
+        The WebGPU device used for the buffer write operation.
+    </li>
+    <li>
+        <strong>animator</strong> (<code>Animator</code>):<br>
+        The animator instance whose current skinning matrices should be uploaded. The animator must have been created with the same skin data whose joint count does not exceed <code>maxBones</code>.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Retrieves the current flattened skinning matrix array from the animator via <code>animator.getSkinningMatrices()</code>.</li>
+    <li>Writes the entire array to the GPU buffer starting at offset 0 using <code>device.queue.writeBuffer</code>.</li>
+</ul>
+
+<h3>Important Note</h3>
+
+<p>The animator's buffer must have a length no greater than <code>maxBones × 16</code>. If the animator was constructed from skin data with more joints than <code>maxBones</code>, the <code>writeBuffer</code> call may write beyond the allocated buffer size, causing a WebGPU validation error. Ensure consistency between the <code>maxBones</code> parameter, the skin data, and the WGSL shader declaration.</p>
+
+<hr>
+
+<h2>Resource Cleanup</h2>
+
+<p>The <code>SkeletonManager</code> does not expose a dedicated <code>destroy()</code> method in the current implementation. To properly release GPU resources, the caller should manage the lifecycle of <code>boneBuffer</code> directly:</p>
+
+<pre><code>// When no longer needed:
+skeletonManager.boneBuffer.destroy();
+</code></pre>
+
+<p>The GPU buffer can be destroyed manually, which will invalidate the buffer and prevent further use. This is safe to call when the skeleton manager and all bind groups referencing the buffer are no longer in use.</p>
+
+<hr>
+
+<h2>Bind Group Integration</h2>
+
+<p>The <code>boneBuffer</code> is designed to be bound to the shader's skeleton uniform at group 2, binding 0, as defined in <code>PBRChunks.SkinningBindings</code>:</p>
+
+<pre><code>@group(2) @binding(0) var&lt;uniform&gt; skeleton: Skeleton;
+</code></pre>
+
+<p>A typical bind group creation for skinned rendering would look like:</p>
+
+<pre><code>const skeletonBindGroup = device.createBindGroup({
+    layout: skeletonBindGroupLayout,
+    entries: [
+        { binding: 0, resource: { buffer: skeletonManager.boneBuffer } }
+    ]
+});
+</code></pre>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { SkeletonManager } from './SkeletonManager';
+import { Animator } from './Animator';
+
+// Create skeleton GPU buffer (matches shader's array size)
+const skeletonManager = new SkeletonManager(device, 70);
+
+// Later, after loading a skinned model:
+const animator = new Animator(glbData.skin);
+animator.play(glbData.animations[0]);
+
+// In the render loop:
+function frame(deltaTime: number) {
+    // Animate on CPU
+    animator.update(deltaTime);
+
+    // Upload to GPU
+    skeletonManager.updateFromAnimator(device, animator);
+
+    // Bind and render using skeletonManager.boneBuffer...
+}
+
+// Reset to bind pose when no animation is needed
+skeletonManager.resetToBindPose(device);
+</code></pre>

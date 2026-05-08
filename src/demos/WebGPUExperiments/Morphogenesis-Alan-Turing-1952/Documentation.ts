@@ -7,23 +7,29 @@ export const morphogenesisDocumentation: DemoMetadata = {
         "Gray-Scott Model",
         "In-Place Buffer Mutation",
         "Vertex Displacement",
-        "Turing Patterns"
+        "Dynamic Uniform Buffers"
     ],
     sections: [
         {
             heading: "Overview",
             isOpen: true,
-            text: "Inspired by Alan Turing's groundbreaking 1952 paper, <em>The Chemical Basis of Morphogenesis</em>, this demo simulates biological pattern formation (like leopard spots or zebra stripes). It utilizes the <strong>Gray-Scott Reaction-Diffusion</strong> algorithm across a grid of 65,536 cells wrapped seamlessly around a 3D torus, proving that complex, organic labyrinths can emerge from incredibly simple mathematical rules."
+            text: "Inspired by Alan Turing's groundbreaking 1952 paper, <em>The Chemical Basis of Morphogenesis</em>, this demo simulates biological pattern formation (like leopard spots or zebra stripes). It utilizes the <strong>Gray-Scott Reaction-Diffusion</strong> algorithm across a massive grid of over 1 million cells (1024x1024) wrapped seamlessly around a 3D torus, proving that complex, organic labyrinths can emerge from incredibly simple mathematical rules."
+        },
+        {
+            heading: "Interactive Parameter Control",
+            text: "The true magic of Reaction-Diffusion lies in the delicate balance of its variables. By passing user interface data through a dedicated WebGPU Uniform Buffer (Group 1), the engine can dynamically alter the Feed Rate, Kill Rate, and Simulation Speed in real-time. This allows the user to seamlessly mutate the algorithm from a static Coral Maze into chaotic boiling magma or dividing Mitosis cells without dropping a single frame."
         },
         {
             heading: "The Mathematical Foundation: Reaction-Diffusion",
             text: "The simulation tracks two virtual chemicals, A and B. Chemical A is continuously 'fed' into the system, while Chemical B is slowly 'killed' off. The core reaction occurs when two parts of B meet one part of A, consuming A to create more B ($A + 2B \\rightarrow 3B$). By calculating the Laplacian (how much the chemicals are spreading from neighboring cells), the Compute Shader evaluates the differential equations:<br><br>$$ \\frac{\\partial A}{\\partial t} = D_A \\nabla^2 A - AB^2 + f(1-A) $$<br>$$ \\frac{\\partial B}{\\partial t} = D_B \\nabla^2 B + AB^2 - (k+f)B $$",
-            code: `// 2. Calculate the Laplacian (Spread)
+            code: `// 1. Pull dynamic parameters from Uniform Buffer
+let feed = params.feed;      
+let kill = params.kill;      
+let dt = 0.8 * params.timeScale; 
+
+// 2. Calculate the Laplacian (Spread)
 var lapA = -center_A;
 var lapB = -center_B;
-
-// Sample orthogonal and diagonal neighbors (simplified)
-lapA += stateGrid[get_idx(gridX - 1, gridY)] * 0.2; 
 // ... (adds all 8 neighbors based on distance weights)
 
 // 3. Reaction Equation
@@ -44,22 +50,24 @@ renderGrid[base + 1u] = next_B;`
         },
         {
             heading: "Rendering Technique: Data-Driven Displacement",
-            text: "To turn a flat texture into a physical, tactile structure, the vertex shader performs <strong>Data-Driven Displacement</strong>. By mapping its UV coordinates to the 256x256 computational grid, the vertex looks up the local chemical concentrations. It subtracts Chemical A from Chemical B, and uses that differential to physically extrude the geometry inward along its normal vector, carving physical valleys into the donut where the chemical reaction takes place.",
-            code: `// Read the exact value the compute shader just wrote
+            text: "To turn a flat texture into a physical, tactile structure, the vertex shader performs <strong>Data-Driven Displacement</strong>. By mapping its UV coordinates to the massive 1024x1024 computational grid, the vertex looks up the local chemical concentrations. It subtracts Chemical A from Chemical B, and uses that differential to physically extrude the geometry along its normal vector. The colors are also dynamically injected from the UI to match the mathematical preset.",
+            code: `// Map UVs to the 1024x1024 grid
+let gridX = u32(safeUV.x * 1023.0); 
+let gridY = u32(safeUV.y * 1023.0);
+
+// Read the exact value the compute shader just wrote
 let chemA = visualGrid[base];
 let chemB = visualGrid[base + 1u];
 let value = chemB - chemA; 
 
-// Extrude geometry inwards where chemical B has eaten chemical A
-let displacement = localNormal * (value * -3.5);
+// Extrude geometry where chemical B has eaten chemical A
+let displacement = localNormal * (value * 5.5);
 let worldPosition = localPos + displacement;
 
-// Color mapping: Deep Void Purple to Bio-Luminescent Green
-out.color = mix(
-    vec3<f32>(0.1, 0.0, 0.2), 
-    vec3<f32>(0.2, 1.0, 0.5), 
-    smoothstep(-0.2, 0.2, value)
-);`
+// Mix dynamic UI colors based on chemical dominance
+let baseColor = params.baseColor.rgb; 
+let peakColor = params.peakColor.rgb;
+out.color = mix(baseColor, peakColor, smoothstep(-0.2, 0.2, value));`
         },
         {
             heading: "Initialization: The Spores",

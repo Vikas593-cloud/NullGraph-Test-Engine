@@ -1,0 +1,57 @@
+.pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-root);
+    height: 40px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.tab-group {
+    display: flex;
+    height: 100%;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-tab-inactive);
+    color: var(--text-muted);
+    border: none;
+    border-right: 1px solid var(--border-color);
+    padding: 0 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    height: 100%;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-light);
+}
+
+/* Active Tab Blends into Editor */
+.tab.active {
+    background-color: var(--bg-editor);
+    color: var(--text-light);
+    border-top: 2px solid var(--accent);
+}
+
+/* Specific Tab Icons */
+.tab-icon { width: 14px; height: 14px; }
+.ts-icon { color: var(--ts-blue); }
+.js-icon { color: var(--js-yellow); }
+.accent-icon { color: var(--accent); }
+
+/* Read-Only Badge */
+.badge {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-left: 6px;
+}

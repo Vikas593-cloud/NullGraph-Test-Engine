@@ -9,3 +9,6 @@ yalc.lock
 git-commit.py
 git_commit.sh
 venv
+public/3dAssetsNotIncluded
+public/AnimatedMixamo
+public/textures

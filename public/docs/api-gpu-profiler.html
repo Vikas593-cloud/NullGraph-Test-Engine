@@ -1,0 +1,244 @@
+<blockquote>
+    <p>The <code>GPUProfiler</code> class provides a lightweight, non-blocking GPU timing utility for measuring render pass or compute pass duration in milliseconds. It uses modern WebGPU timestamp queries, asynchronous buffer mapping, and a callback-based design to report GPU execution time without stalling the CPU or the rendering pipeline.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>GPUProfiler</code> (Class)</h2>
+
+<p>Wraps a WebGPU timestamp query set and associated resolve/readback buffers to measure the elapsed GPU time between paired <code>begin()</code> and <code>end()</code> calls. Results are delivered asynchronously via a user-provided callback to avoid blocking the main thread.</p>
+
+<p>The profiler uses a guard flag (<code>isMapping</code>) to prevent overlapping measurement cycles — if a previous measurement's readback is still in flight, subsequent <code>begin()</code> and <code>end()</code> calls are silently ignored until the mapping completes.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new GPUProfiler(device)</code></h3>
+
+<p>Creates a new GPU profiler, allocating the timestamp query set, resolve buffer, and readback buffer.</p>
+
+<ul>
+    <li>
+        <strong>device</strong> (<code>GPUDevice</code>):<br>
+        The WebGPU device used for buffer and query set allocation. The device must support the <code>'timestamp-query'</code> feature.
+    </li>
+</ul>
+
+<h3>Allocated Resources</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Resource</th>
+        <th>Type</th>
+        <th>Size</th>
+        <th>Usage</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>Query Set</strong></td>
+        <td><code>GPUQuerySet</code></td>
+        <td>2 slots</td>
+        <td><code>"timestamp"</code> — Slot 0 for begin, slot 1 for end</td>
+    </tr>
+    <tr>
+        <td><strong>Resolve Buffer</strong></td>
+        <td><code>GPUBuffer</code></td>
+        <td>16 bytes</td>
+        <td><code>QUERY_RESOLVE | COPY_SRC</code> — GPU-side destination for query resolution</td>
+    </tr>
+    <tr>
+        <td><strong>Readback Buffer</strong></td>
+        <td><code>GPUBuffer</code></td>
+        <td>16 bytes</td>
+        <td><code>COPY_DST | MAP_READ</code> — CPU-mappable buffer for readback</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>Each buffer holds two 8-byte <code>uint64</code> timestamp values (16 bytes total).</p>
+
+<hr>
+
+<h2>Public Methods</h2>
+
+<h3><code>begin()</code></h3>
+
+<p>Records the starting GPU timestamp by submitting a minimal compute pass with a timestamp write at the beginning of the pass.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li><strong>Guard Check</strong>: If a previous measurement cycle is still in flight (<code>isMapping === true</code>), the method returns immediately without recording anything. This prevents overlapping timestamp writes that would corrupt the query set.</li>
+    <li>Creates a new command encoder.</li>
+    <li>Opens a compute pass with <code>timestampWrites.beginningOfPassWriteIndex</code> set to <code>0</code>, writing the current GPU timestamp into query slot 0 as the pass begins.</li>
+    <li>Immediately ends the compute pass (no actual compute work is performed — the pass exists solely to capture the timestamp).</li>
+    <li>Submits the command buffer to the device queue.</li>
+</ul>
+
+<h3>Modern WebGPU API Usage</h3>
+
+<p>Uses the <code>timestampWrites</code> property on the compute pass descriptor, which is the current standard approach for writing timestamps at pass boundaries:</p>
+
+<pre><code>enc.beginComputePass({
+    timestampWrites: {
+        querySet: this.querySet,
+        beginningOfPassWriteIndex: 0
+    }
+});
+</code></pre>
+
+<hr>
+
+<h3><code>end(onUpdate)</code></h3>
+
+<p>Records the ending GPU timestamp, resolves the query set to a buffer, initiates an asynchronous readback, and invokes the provided callback with the measured GPU time in milliseconds once the data is available.</p>
+
+<ul>
+    <li>
+        <strong>onUpdate</strong> (<code>(gpuTimeMs: number) =&gt; void</code>):<br>
+        Callback function that receives the measured GPU execution time in milliseconds. Called asynchronously when the timestamp data is available from the GPU (typically 1–3 frames later).
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ol>
+    <li><strong>Guard Check</strong>: If <code>isMapping</code> is <code>true</code>, the method returns immediately to prevent overlapping readbacks.</li>
+    <li>Creates a command encoder and opens a compute pass with <code>timestampWrites.endOfPassWriteIndex</code> set to <code>1</code>, writing the current GPU timestamp into query slot 1.</li>
+    <li>Ends the compute pass.</li>
+    <li><strong>Resolves</strong> the query set (indices 0 and 1) into the resolve buffer via <code>enc.resolveQuerySet()</code>. This copies the raw timestamp values from the query set into a GPU buffer.</li>
+    <li><strong>Copies</strong> the resolve buffer contents to the CPU-mappable readback buffer via <code>enc.copyBufferToBuffer()</code>.</li>
+    <li>Submits the command buffer to the device queue.</li>
+    <li>Sets <code>isMapping = true</code> to block overlapping measurements.</li>
+    <li>Calls <code>readbackBuf.mapAsync(GPUMapMode.READ)</code> to asynchronously request CPU access to the buffer contents.</li>
+    <li>When the mapping promise resolves:
+        <ul>
+            <li>Reads the two <code>uint64</code> timestamps from the mapped range using <code>BigInt64Array</code>.</li>
+            <li>Calculates the duration: <code>durationNs = times[1] - times[0]</code> (in nanoseconds).</li>
+            <li>Converts to milliseconds: <code>durationMs = durationNs / 1_000_000</code>.</li>
+            <li>Unmaps the readback buffer (<code>readbackBuf.unmap()</code>).</li>
+            <li>Resets <code>isMapping = false</code>, allowing a new measurement cycle to begin.</li>
+            <li>If <code>durationMs &gt; 0</code>, invokes <code>onUpdate(durationMs)</code>. A zero or negative duration (which can occur if timestamps are incorrectly ordered) is silently ignored.</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Modern WebGPU API Usage</h3>
+
+<p>Uses <code>timestampWrites.endOfPassWriteIndex</code> to record the timestamp when the pass ends:</p>
+
+<pre><code>enc.beginComputePass({
+    timestampWrites: {
+        querySet: this.querySet,
+        endOfPassWriteIndex: 1
+    }
+});
+</code></pre>
+
+<hr>
+
+<h2>Measurement Cycle</h2>
+
+<h3>Lifecycle of a Single Measurement</h3>
+
+<pre><code>                         Frame N                Frame N+1              Frame N+2
+                         ────────               ──────────             ──────────
+CPU:  profiler.begin() ──► profiler.end() ──►   (waiting)   ──►  mapAsync resolves
+                                                                       │
+GPU:                    [timestamp 0]          [timestamp 1]           │
+                                                                       ▼
+                                                               onUpdate(ms) called
+</code></pre>
+
+<p>The <code>begin()</code> and <code>end()</code> calls must bracket the workload being measured. For example, to measure a render pass:</p>
+
+<pre><code>profiler.begin();
+// Execute render pass(es) for the current frame
+profiler.end((ms) => console.log(`GPU time: ${ms.toFixed(2)} ms`));
+</code></pre>
+
+<p>Due to the asynchronous GPU execution model, the <code>begin()</code> and <code>end()</code> timestamps capture the span across all submitted work between the two calls, including any render or compute passes submitted in between.</p>
+
+<hr>
+
+<h2>State Management</h2>
+
+<h3><code>isMapping</code> (Private Property)</h3>
+
+<p>A boolean guard that prevents overlapping measurement cycles:</p>
+
+<ul>
+    <li>Set to <code>true</code> when <code>end()</code> initiates the buffer mapping.</li>
+    <li>While <code>true</code>, both <code>begin()</code> and <code>end()</code> return immediately without performing any work.</li>
+    <li>Set back to <code>false</code> when the <code>mapAsync</code> promise resolves and the buffer is unmapped.</li>
+</ul>
+
+<p>This mechanism ensures the query set and readback buffers are not written to while a readback is in progress, which would cause WebGPU validation errors or corrupted results.</p>
+
+<hr>
+
+<h2>Resource Cleanup</h2>
+
+<p>The <code>GPUProfiler</code> does not expose a dedicated <code>destroy()</code> method. The caller is responsible for managing the lifecycle of the allocated resources if they need to be released before the profiler is garbage collected:</p>
+
+<pre><code>// Manual cleanup (if necessary)
+profiler.querySet.destroy?.(); // Query sets may not have destroy in all implementations
+profiler.resolveBuf.destroy();
+profiler.readbackBuf.destroy();
+</code></pre>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { GPUProfiler } from './GPUProfiler';
+
+// Ensure the device supports timestamp queries
+if (!device.features.has('timestamp-query')) {
+    throw new Error('Timestamp queries not supported');
+}
+
+// Create profiler
+const profiler = new GPUProfiler(device);
+
+// In the render loop:
+function frame() {
+    // Mark start of measured section
+    profiler.begin();
+
+    // Execute all rendering work for this frame
+    renderPassEncoder.draw(...);
+    // ... more draw calls, compute passes, etc.
+
+    // Mark end and provide callback for result
+    profiler.end((gpuTimeMs) => {
+        console.log(`GPU frame time: ${gpuTimeMs.toFixed(2)} ms`);
+        updatePerformanceHUD(gpuTimeMs);
+    });
+
+    // Note: If begin() returns early due to isMapping === true,
+    // this frame's GPU work is not being measured. The callback
+    // from the previous cycle will fire when its data is ready.
+}
+</code></pre>
+
+<hr>
+
+<h2>Limitations and Notes</h2>
+
+<ul>
+    <li><strong>Feature Requirement</strong>: The WebGPU device must be created with the <code>'timestamp-query'</code> feature enabled. Without this, <code>createQuerySet</code> with type <code>"timestamp"</code> will throw an error.</li>
+    <li><strong>Quantization</strong>: Timestamp resolution is GPU-dependent and may be quantized based on the GPU's clock frequency. Typical resolution is on the order of tens of nanoseconds.</li>
+    <li><strong>Single Measurement in Flight</strong>: Only one measurement can be in progress at a time. If <code>begin()</code> is called while a previous <code>end()</code> is still awaiting readback, it is silently ignored. This means not every frame will be measured — measurements skip frames when the GPU pipeline is deep.</li>
+    <li><strong>Wraparound</strong>: The <code>uint64</code> timestamp counter may wrap around after approximately 580 years at typical GPU clock rates, making wraparound a non-issue in practice.</li>
+    <li><strong>Negative Durations</strong>: If <code>times[1] - times[0]</code> is zero or negative (which should not occur with correct <code>begin()</code>/<code>end()</code> ordering), the callback is not invoked.</li>
+    <li><strong>Pass Type</strong>: The implementation uses <code>beginComputePass</code> rather than <code>beginRenderPass</code> for timestamp insertion, as it is the most lightweight pass type that supports timestamp writes. The compute pass does not execute any actual work — it exists solely as a carrier for the timestamp query.</li>
+</ul>

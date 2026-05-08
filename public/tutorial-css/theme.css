@@ -1,0 +1,37 @@
+:root {
+    /* Base Colors */
+    --bg-root: #181818;
+    --bg-activity: #111111;
+    --bg-sidebar: #1e1e1e;
+    --bg-editor: #1e1e1e;
+    --bg-tab-inactive: #2d2d2d;
+    --bg-status: #007acc;
+
+    /* UI Borders */
+    --border-color: #333333;
+    --border-resizer: #2b2b2b;
+
+    /* Text & Accents */
+    --text-main: #cccccc;
+    --text-muted: #858585;
+    --text-light: #ffffff;
+    --accent: #33e6cc;
+    --accent-hover: #4dffda;
+    --vscode-blue: #007acc;
+
+    /* Language Icon Colors */
+    --ts-blue: #3178c6;
+    --js-yellow: #f7df1e;
+    --error-bg: #cc0000;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-root);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+}

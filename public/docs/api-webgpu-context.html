@@ -1,0 +1,37 @@
+<blockquote>
+    <p>The <code>WebGPUContext</code> class encapsulates the native WebGPU initialization pipeline. It handles the adapter request, feature negotiation, canvas swapchain configuration, and base depth buffer management.</p>
+</blockquote>
+
+<hr>
+
+<h2>Public Properties</h2>
+<p>These properties are populated and available after <code>init()</code> has successfully resolved.</p>
+<ul>
+    <li><code><strong>device: GPUDevice</strong></code><br>The initialized native WebGPU device used for creating buffers, textures, and pipelines.</li>
+    <li><code><strong>context: GPUCanvasContext</strong></code><br>The WebGPU context attached to the HTML canvas.</li>
+    <li><code><strong>format: GPUTextureFormat</strong></code><br>The preferred texture format of the canvas (determined by the user's OS/browser, usually <code>'bgra8unorm'</code> or <code>'rgba8unorm'</code>).</li>
+    <li><code><strong>depthTexture: GPUTexture</strong></code><br>The main depth buffer (<code>'depth24plus'</code>) automatically sized to match the canvas dimensions.</li>
+    <li><code><strong>cameraUniformBuffer: GPUBuffer</strong></code><br>A pre-allocated Uniform Buffer (80 bytes) dedicated to holding global camera state (View/Projection matrices).</li>
+</ul>
+
+<hr>
+
+<h2>Initialization & Lifecycle</h2>
+
+<h3><code>init(canvas, desiredFeatures?)</code></h3>
+<p>Bootstraps the WebGPU environment. It performs fallback-safe feature negotiation, meaning it will only request features that the physical hardware actually supports, preventing initialization crashes.</p>
+<ul>
+    <li><strong>canvas</strong> (<code>HTMLCanvasElement</code>): The target canvas to render to.</li>
+    <li><strong>desiredFeatures</strong> (<code>GPUFeatureName[]</code>): An optional array of WebGPU features you want to enable (e.g., <code>['indirect-first-instance']</code>). Unsuported features are safely ignored with a console warning. Defaults to <code>[]</code>.</li>
+    <li><strong>Returns</strong>: <code>Promise&lt;void&gt;</code>. Throws an error if WebGPU is not supported or no appropriate adapter is found.</li>
+</ul>
+<p><em>Note: The canvas context is automatically configured with <code>alphaMode: 'premultiplied'</code> to ensure correct blending with DOM UI overlays.</em></p>
+
+<h3><code>resize(width, height)</code></h3>
+<p>Handles resizing events from the browser. Automatically safely destroys the old depth texture and allocates a new one matching the requested dimensions.</p>
+<ul>
+    <li><strong>width</strong> (<code>number</code>): The new width in pixels.</li>
+    <li><strong>height</strong> (<code>number</code>): The new height in pixels.</li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+<p><em>Note: This method includes safety checks to prevent crashes if resize events fire before the device is fully initialized, and enforces a minimum dimension of 1x1 to satisfy WebGPU texture constraints.</em></p>

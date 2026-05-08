@@ -1,0 +1,307 @@
+
+<blockquote>
+    <p>The <code>Animator</code> class provides a runtime skeletal animation playback system for NullGraph. It evaluates glTF-compatible animation clips on a full node hierarchy, computes global transforms via recursive tree traversal with frame caching, and outputs flattened skinning matrices ready for direct upload to WebGPU shaders.</p>
+</blockquote>
+
+<hr>
+
+<h2><code>Animator</code> (Class)</h2>
+
+<p>Manages skeletal animation playback for a single skinned mesh. It supports looping animation clips, interpolates translation, rotation (via spherical linear interpolation), and scale channels, and computes the final array of skinning matrices for GPU consumption.</p>
+
+<p>The animator operates on the entire scene node tree — not just joints — ensuring correct global transform propagation when intermediate nodes (such as armature roots) carry animation data.</p>
+
+<hr>
+
+<h2>Constructor</h2>
+
+<h3><code>new Animator(skin)</code></h3>
+
+<p>Creates a new animator for the given skin data, allocating all required memory and resetting to the bind pose.</p>
+
+<ul>
+    <li>
+        <strong>skin</strong> (<code>GLBSkin</code>):<br>
+        The skin data extracted from a GLB file, containing the joint array, inverse bind matrices, and the full node hierarchy.
+    </li>
+</ul>
+
+<h3>Internal Allocation</h3>
+
+<p>Upon construction, the animator pre-allocates typed arrays sized for the entire node tree:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Array</th>
+        <th>Size</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>localTranslations</code></td>
+        <td><code>nodeCount × 3</code></td>
+        <td>Per-node local translation vectors</td>
+    </tr>
+    <tr>
+        <td><code>localRotations</code></td>
+        <td><code>nodeCount × 4</code></td>
+        <td>Per-node local rotation quaternions (xyzw)</td>
+    </tr>
+    <tr>
+        <td><code>localScales</code></td>
+        <td><code>nodeCount × 3</code></td>
+        <td>Per-node local scale vectors</td>
+    </tr>
+    <tr>
+        <td><code>localMatrices</code></td>
+        <td><code>nodeCount × 16</code></td>
+        <td>Per-node local 4×4 transformation matrices</td>
+    </tr>
+    <tr>
+        <td><code>globalMatrices</code></td>
+        <td><code>nodeCount × 16</code></td>
+        <td>Per-node world-space 4×4 transformation matrices (cached per frame)</td>
+    </tr>
+    <tr>
+        <td><code>globalComputed</code></td>
+        <td><code>nodeCount</code></td>
+        <td>Per-frame dirty flags (<code>0</code> = not computed, <code>1</code> = computed)</td>
+    </tr>
+    <tr>
+        <td><code>nodeParents</code></td>
+        <td><code>nodeCount</code></td>
+        <td>Precomputed parent index for each node (<code>-1</code> for root nodes)</td>
+    </tr>
+    <tr>
+        <td><code>skinningMatrices</code></td>
+        <td><code>jointCount × 16</code></td>
+        <td>Final output: flattened 4×4 skinning matrices for GPU upload</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Public Methods</h2>
+
+<h3><code>play(animation)</code></h3>
+
+<p>Begins playback of the specified animation clip from time zero.</p>
+
+<ul>
+    <li>
+        <strong>animation</strong> (<code>GLBAnimation</code>):<br>
+        The animation clip to play.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Sets the provided animation as the current clip.</li>
+    <li>Resets the playback time to <code>0</code>.</li>
+    <li>Calls <code>resetToBindPose()</code> to restore all nodes to their default transforms before evaluation begins. This prevents pose contamination from previously played animations.</li>
+</ul>
+
+<hr>
+
+<h3><code>update(deltaTime)</code></h3>
+
+<p>Advances the animation time, evaluates the current clip, and recomputes the skinning matrix output.</p>
+
+<ul>
+    <li>
+        <strong>deltaTime</strong> (<code>number</code>):<br>
+        Time elapsed since the last frame, in seconds.
+    </li>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ol>
+    <li>Increments the internal time accumulator by <code>deltaTime</code>.</li>
+    <li>Loops the animation if the time exceeds <code>maxTime</code> (using modulo wrap).</li>
+    <li>Calls <code>evaluateAnimation()</code> to sample and interpolate all channels.</li>
+    <li>Calls <code>computeMatrices()</code> to rebuild the local, global, and skinning matrices.</li>
+</ol>
+
+<h3>Idle Behavior</h3>
+
+<p>If no animation is currently playing (<code>currentAnimation === null</code>), the method returns immediately without modifying any state.</p>
+
+<hr>
+
+<h3><code>getSkinningMatrices()</code></h3>
+
+<p>Returns the current array of flattened 4×4 skinning matrices suitable for direct upload to a WebGPU uniform or storage buffer.</p>
+
+<ul>
+    <li>
+        <strong>Returns</strong>: <code>Float32Array</code><br>
+        A <code>Float32Array</code> of length <code>jointCount × 16</code>, where each consecutive group of 16 floats represents a single 4×4 skinning matrix in column-major order.
+    </li>
+</ul>
+
+<h3>Usage</h3>
+
+<p>The returned buffer is a live view into the animator's internal state. It should be written to the GPU each frame that the animation advances:</p>
+
+<pre><code>// Each frame:
+animator.update(deltaTime);
+const matrices = animator.getSkinningMatrices();
+engine.device.queue.writeBuffer(skeletonUniformBuffer, 0, matrices);
+</code></pre>
+
+<hr>
+
+<h2>Internal Methods</h2>
+
+<h3><code>resetToBindPose()</code> <em>(Private)</em></h3>
+
+<p>Restores all nodes to their default transforms as defined in the glTF node data.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Behavior</h3>
+
+<ul>
+    <li>Iterates over every node in the skin's node array.</li>
+    <li>Reads the default <code>translation</code>, <code>rotation</code>, and <code>scale</code> from each node definition.</li>
+    <li>Defaults missing translation to <code>[0, 0, 0]</code>, rotation to <code>[0, 0, 0, 1]</code> (identity quaternion), and scale to <code>[1, 1, 1]</code>.</li>
+    <li>Writes these defaults into the <code>localTranslations</code>, <code>localRotations</code>, and <code>localScales</code> arrays.</li>
+</ul>
+
+<hr>
+
+<h3><code>evaluateAnimation()</code> <em>(Private)</em></h3>
+
+<p>Samples the current animation at the current time and interpolates all active channels into the local transform arrays.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h3>Keyframe Lookup</h3>
+
+<p>For each channel, the method finds the two surrounding keyframes by scanning the sampler's time array until <code>times[frameIdx + 1] >= currentTime</code>.</p>
+
+<h3>Interpolation</h3>
+
+<p>The interpolation factor is calculated as:</p>
+
+<pre><code>factor = (currentTime - t0) / (t1 - t0)
+</code></pre>
+
+<p>Channel interpolation by path:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Path</th>
+        <th>Method</th>
+        <th>Component Count</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>'translation'</code></td>
+        <td>Linear interpolation (<code>MathUtils.lerp</code>)</td>
+        <td>3 (vec3)</td>
+    </tr>
+    <tr>
+        <td><code>'rotation'</code></td>
+        <td>Spherical linear interpolation (<code>MathUtils.slerp</code>)</td>
+        <td>4 (quaternion)</td>
+    </tr>
+    <tr>
+        <td><code>'scale'</code></td>
+        <td>Linear interpolation (<code>MathUtils.lerp</code>)</td>
+        <td>3 (vec3)</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>All interpolated values are written directly into the corresponding <code>localTranslations</code>, <code>localRotations</code>, or <code>localScales</code> arrays at the node's offset.</p>
+
+<hr>
+
+<h3><code>computeMatrices()</code> <em>(Private)</em></h3>
+
+<p>Rebuilds all local, global, and skinning matrices for the current frame.</p>
+
+<ul>
+    <li><strong>Returns</strong>: <code>void</code></li>
+</ul>
+
+<h4>Step 1: Local Matrix Construction</h4>
+
+<p>For every node, a 4×4 local transformation matrix is built from the current translation, rotation quaternion, and scale using <code>MathUtils.fromTRS</code>.</p>
+
+<h4>Step 2: Global Matrix Computation (Recursive with Caching)</h4>
+
+<p>A recursive helper function <code>getGlobal(nodeIndex)</code> computes the world-space matrix for each node:</p>
+
+<ul>
+    <li>If the node's global matrix was already computed this frame (checked via <code>globalComputed</code> flag), the cached value is returned immediately.</li>
+    <li>If the node is a root (no parent, <code>nodeParents[i] === -1</code>), its global matrix equals its local matrix.</li>
+    <li>Otherwise, the global matrix is computed as:<br>
+        <code>global = parentGlobal × local</code></li>
+    <li>The result is stored in <code>globalMatrices</code> and marked as computed in <code>globalComputed</code>.</li>
+</ul>
+
+<h4>Step 3: Skinning Matrix Assembly</h4>
+
+<p>For each joint in the skin:</p>
+
+<ol>
+    <li>The joint's global matrix is fetched via <code>getGlobal(jointNodeIndex)</code>.</li>
+    <li>The corresponding inverse bind matrix is read from the skin data.</li>
+    <li>The final skinning matrix is computed as:<br>
+        <code>skinMatrix = globalMatrix × inverseBindMatrix</code></li>
+    <li>The result is stored in the <code>skinningMatrices</code> output array.</li>
+</ol>
+
+<h3>Performance Optimization</h3>
+
+<ul>
+    <li>The <code>globalComputed</code> dirty flag array prevents redundant global matrix calculations for nodes that are ancestors of multiple joints.</li>
+    <li>The parent lookup uses a precomputed <code>nodeParents</code> array (<code>Int16Array</code>) for O(1) parent index access.</li>
+    <li>Recursion depth is bounded by the maximum node hierarchy depth, and caching ensures each node's global matrix is computed at most once per frame.</li>
+</ul>
+
+<hr>
+
+<h2>Typical Workflow</h2>
+
+<pre><code>import { GLBParser } from './GLBParser';
+import { Animator } from './Animator';
+
+// Load a skinned model
+const glbData = await GLBParser.load('character.glb');
+const skin = glbData.skin;
+
+// Create an animator for the skin
+const animator = new Animator(skin);
+
+// Start playing an animation clip
+animator.play(glbData.animations[0]);
+
+// In the render loop:
+function frame(deltaTime: number) {
+    animator.update(deltaTime);
+
+    const skinningMatrices = animator.getSkinningMatrices();
+    device.queue.writeBuffer(skeletonBuffer, 0, skinningMatrices);
+
+    // Proceed with rendering...
+}
+
+// Switch animations at any time:
+animator.play(glbData.animations[1]); // Resets to bind pose and plays new clip
+</code></pre>

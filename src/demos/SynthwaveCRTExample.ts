@@ -1,6 +1,6 @@
 // demos/SynthwaveCRTExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import { pyramidIndices, pyramidVertices } from "../data";
+import { pyramidIndices, pyramidVertices } from "../data/geometryData";
 import { UIState } from "../types";
 
 export async function setupSynthwaveCRT(engine: NullGraph, camera: Camera, getState: () => UIState) {
@@ -126,8 +126,8 @@ export async function setupSynthwaveCRT(engine: NullGraph, camera: Camera, getSt
         @group(0) @binding(0) var<uniform> camera: Camera;
         @group(0) @binding(1) var<storage, read> ecs: array<f32>;
 
-        @group(1) @binding(0) var screenTex: texture_2d<f32>;
-        @group(1) @binding(1) var screenSamp: sampler;
+        @group(1) @binding(1) var screenTex: texture_2d<f32>;
+        @group(1) @binding(0) var screenSamp: sampler;
 
         struct VertexOut {
             @builtin(position) pos: vec4<f32>,

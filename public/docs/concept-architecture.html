@@ -1,0 +1,817 @@
+<blockquote>
+    <p>The <strong>NullGraph Engine</strong> is a WebGPU-based real-time 3D rendering engine designed around a data-oriented, pass-and-batch architecture. It provides PBR rendering, skeletal animation, GLB model loading, GPU profiling, and on-screen performance monitoring — all orchestrated through a central <code>NullGraph</code> engine class that ties together subsystems for rendering, resource management, and frame execution.</p>
+</blockquote>
+
+<hr>
+
+<h2>Architecture Overview</h2>
+
+<p>The engine follows a <strong>layered architecture</strong> with clear separation of concerns across three tiers:</p>
+
+<pre><code>
+┌─────────────────────────────────────────────────────────────────┐
+│                     APPLICATION LAYER                           │
+│  User Code (main.ts)                                           │
+│  Camera Setup, Scene Assembly, Game Logic                      │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                     HIGH-LEVEL API LAYER                        │
+│                                                                 │
+│  NullGraph (Engine Core)                                       │
+│  ├── init()           — Boot WebGPU, create subsystems          │
+│  ├── createPass()     — Build render passes                     │
+│  ├── createBatch()    — Build render batches                    │
+│  ├── updateCamera()   — Push camera uniforms to GPU             │
+│  └── render()         — Execute full frame                      │
+│                                                                 │
+│  Camera               — View/Projection matrix generation       │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                   SUBSYSTEM LAYER                               │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ BatchManager │  │RenderPipeline│  │    TextureManager    │  │
+│  │              │  │              │  │                      │  │
+│  │ - createBatch│  │ - render()   │  │ - fallback textures  │  │
+│  │ - clearBatch │  │ - GPU submit │  │ - default sampler    │  │
+│  │ - attachMat. │  │ - passes loop│  │                      │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
+│         │                 │                      │              │
+│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────────▼───────────┐  │
+│  │RenderPassNode│  │  Animator    │  │   SkeletonManager    │  │
+│  │              │  │              │  │                      │  │
+│  │ - batches[]  │  │ - play()     │  │ - boneBuffer (GPU)   │  │
+│  │ - addBatch() │  │ - update()   │  │ - updateFromAnim.()  │  │
+│  │              │  │ - getSkinMat.│  │ - resetToBindPose()  │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │  GLBParser   │  │ BufferManager│  │    GPUProfiler       │  │
+│  │              │  │              │  │                      │  │
+│  │ - load()     │  │ - createVBO()│  │ - begin() / end()    │  │
+│  │ - parse()    │  │ - createIBO()│  │ - async readback      │  │
+│  │ - loadMerged │  │              │  │                      │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                    SHADER / MATH LAYER                          │
+│                                                                 │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
+│  │  buildPBRShader  │  │   PBRChunks      │  │  MathUtils   │  │
+│  │                  │  │                  │  │              │  │
+│  │ - ShaderConfig   │  │ - CommonBindings │  │ - identity() │  │
+│  │ - vs_main gen    │  │ - SkinningBind.  │  │ - multiply() │  │
+│  │ - fs_main gen    │  │ - PBRMath        │  │ - fromTRS()  │  │
+│  └──────────────────┘  └──────────────────┘  │ - lerp()     │  │
+│                                              │ - slerp()    │  │
+│  ┌──────────────────┐                        └──────────────┘  │
+│  │StandardPBRMaterial│                                          │
+│  │                  │                                           │
+│  │ - applyToBatch() │                                           │
+│  │ - updateUniforms │                                           │
+│  └──────────────────┘                                           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                    PLATFORM LAYER                               │
+│                                                                 │
+│  WebGPU API (GPUDevice, GPUQueue, GPUCommandEncoder, etc.)      │
+│  Browser Canvas (HTMLCanvasElement, GPUCanvasContext)           │
+│  WGSL Shader Language                                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr>
+
+<h2>Core Engine: <code>NullGraph</code> Class</h2>
+
+<p>The <code>NullGraph</code> class is the central orchestrator and public API surface. It owns all subsystem instances and exposes convenience methods that delegate to those subsystems.</p>
+
+<h3>Subsystem Ownership</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Subsystem</th>
+        <th>Property</th>
+        <th>Role</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>WebGPUContext</strong></td>
+        <td><code>ctx</code></td>
+        <td>Device, canvas context, swap chain format, camera uniform buffer, shared depth texture</td>
+    </tr>
+    <tr>
+        <td><strong>BatchManager</strong></td>
+        <td><code>batchManager</code></td>
+        <td>Batch creation, pipeline construction, bind group assembly, batch cleanup</td>
+    </tr>
+    <tr>
+        <td><strong>RenderPipeline</strong></td>
+        <td><code>renderPipeline</code></td>
+        <td>Pass execution, indirect draw reset, compute culling dispatch, GPU submission</td>
+    </tr>
+    <tr>
+        <td><strong>BufferManager</strong></td>
+        <td><code>bufferManager</code></td>
+        <td>Vertex and index buffer creation from CPU data</td>
+    </tr>
+    <tr>
+        <td><strong>TextureManager</strong></td>
+        <td><code>textureManager</code></td>
+        <td>Fallback textures (white, normal), default sampler, texture loading</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Public API Surface</h3>
+
+<h4><code>init(canvas)</code></h4>
+
+<p>Boots the engine: configures the WebGPU device with required features (<code>'timestamp-query'</code>, etc.), creates the canvas context, allocates the camera uniform buffer and shared depth texture, instantiates all subsystems, and prepares the engine for rendering.</p>
+
+<h4><code>createPass(config)</code></h4>
+
+<p>Creates a new <code>RenderPassNode</code>. Delegates to the <code>RenderPassNode</code> constructor. Returns the pass for batch attachment.</p>
+
+<h4><code>createBatch(pass, config)</code></h4>
+
+<p>Creates a fully configured <code>RenderBatch</code> and adds it to the specified pass. Delegates to <code>BatchManager.createBatch()</code>.</p>
+
+<h4><code>updateCamera(camera)</code></h4>
+
+<p>Writes the camera's view-projection matrix and eye position to the GPU camera uniform buffer. Called every frame before rendering.</p>
+
+<h4><code>render()</code></h4>
+
+<p>Executes a full frame: delegates to <code>RenderPipeline.render(passes)</code>, which encodes all passes and submits the command buffer to the GPU queue.</p>
+
+<h4>Convenience Delegates</h4>
+
+<ul>
+    <li><code>setBatchGeometry(batch, vbo, ibo, indexCount, format?)</code> → <code>BatchManager.setBatchGeometry()</code></li>
+    <li><code>updateBatchData(batch, data, count)</code> → <code>BatchManager.updateBatchData()</code></li>
+    <li><code>attachTextureMaterial(batch, views, sampler, extras?, group?)</code> → <code>BatchManager.attachTextureMaterial()</code></li>
+    <li><code>attachMaterial(batch, material, group?)</code> → <code>BatchManager.attachMaterial()</code></li>
+    <li><code>clearBatch(pass, batch)</code> → <code>BatchManager.clearBatch()</code></li>
+</ul>
+
+<hr>
+
+<h2>Frame Execution Pipeline</h2>
+
+<p>Each frame follows a strict execution sequence:</p>
+
+<pre><code>
+                   APPLICATION FRAME LOOP
+═══════════════════════════════════════════════════════════════
+
+  1. Input / Logic Update
+     │
+     ├── Update game state, animation timers
+     │
+     ▼
+  2. Camera Update
+     │
+     ├── camera.updateView(eye, target)
+     ├── engine.updateCamera(camera)
+     │   └── Writes {viewProj, eyePos, simTime} to GPU uniform buffer
+     │
+     ▼
+  3. Animation Evaluation (if skinned meshes present)
+     │
+     ├── animator.update(deltaTime)
+     ├── skeletonManager.updateFromAnimator(device, animator)
+     │   └── Uploads skinning matrices to GPU uniform buffer
+     │
+     ▼
+  4. Instance Data Upload
+     │
+     ├── engine.updateBatchData(batch, instanceData, count)
+     │   └── Writes per-instance transforms to storage buffer
+     │
+     ▼
+  5. GPU Profiling (optional)
+     │
+     ├── gpuProfiler.begin()
+     │
+     ▼
+  6. Render Submission
+     │
+     ├── engine.render()
+     │   │
+     │   └── RenderPipeline.render(passes)
+     │       │
+     │       ├── For each RenderPassNode:
+     │       │   ├── Phase 1: Indirect draw reset (zero instance count)
+     │       │   ├── Phase 2: Compute culling dispatch
+     │       │   ├── Phase 3: Attachment resolution (canvas or offscreen)
+     │       │   └── Phase 4: Draw batch execution
+     │       │
+     │       └── device.queue.submit([commandEncoder.finish()])
+     │
+     ▼
+  7. GPU Profiling (optional)
+     │
+     ├── gpuProfiler.end((gpuMs) => { ... })
+     │
+     ▼
+  8. Performance Widget Update
+     │
+     ├── perfWidget.tick()          // FPS counter
+     └── perfWidget.updateMetrics() // CPU/GPU times (when GPU data arrives)
+</code></pre>
+
+<hr>
+
+<h2>Data Flow: From GLB to Screen</h2>
+
+<p>The complete data pipeline for rendering a skinned, PBR-textured 3D model:</p>
+
+<pre><code>
+  GLB FILE (.glb)
+  ═══════════════
+  │
+  ▼
+  GLBParser.load(url)
+  │
+  ├── Parses JSON chunk → glTF scene descriptor
+  ├── Parses binary chunk → vertex data, index data, animation keyframes
+  ├── Resolves image URLs → PNG/JPEG blob URLs
+  │
+  ▼
+  GLBData
+  ├── meshes: RawGeometryData[]
+  │   ├── vertices: Float32Array (interleaved, dynamic stride)
+  │   ├── indices: Uint16Array | Uint32Array
+  │   ├── isSkinned: boolean
+  │   ├── albedoUrl, normalUrl, metallicRoughnessUrl, etc.
+  │   └── getWebGPULayout(): GPUVertexBufferLayout[]
+  ├── skin: GLBSkin | null
+  │   ├── joints: number[]
+  │   ├── inverseBindMatrices: Float32Array
+  │   └── nodes: glTF node array
+  └── animations: GLBAnimation[]
+      ├── channels: {targetNode, path, samplerIndex}[]
+      ├── samplers: {input: times, output: values, interpolation}[]
+      └── maxTime: number
+  │
+  ▼
+  CPU-SIDE PROCESSING
+  ═══════════════════
+  │
+  ├── BufferManager.createVertexBuffer(vertices) → GPUBuffer (VBO)
+  ├── BufferManager.createIndexBuffer(indices)   → GPUBuffer (IBO)
+  │
+  ├── [If skinned] Animator(skin)
+  │   └── Allocates local/global/skinning matrix arrays
+  │
+  ├── [If skinned] SkeletonManager(device, maxBones=70)
+  │   └── Allocates GPU uniform buffer for bone matrices
+  │
+  ├── Texture loading (from resolved URLs)
+  │   └── Creates GPUTexture + GPUTextureView for each map
+  │
+  ├── StandardPBRMaterial(engine, options)
+  │   └── Allocates GPU uniform buffer for material params
+  │
+  ├── buildPBRShader({ useSkinning: true/false })
+  │   └── Generates WGSL string with correct bindings
+  │
+  ▼
+  BATCH CREATION (BatchManager.createBatch)
+  ═════════════════════════════════════════
+  │
+  ├── Creates GPURenderPipeline (from shader + vertex layout)
+  ├── Allocates storage buffer (instance transforms)
+  ├── [If indirect] Allocates indirect buffer + compute pipeline
+  ├── Creates bind group 0: camera uniform + storage buffer
+  ├── [If material] Attaches material bind group 1
+  │
+  ▼
+  PER-FRAME GPU UPLOAD
+  ════════════════════
+  │
+  ├── Camera uniforms → GPU (viewProj, eyePos, simTime)
+  ├── Skinning matrices → GPU (from Animator via SkeletonManager)
+  ├── Instance data → GPU storage buffer
+  │
+  ▼
+  GPU RENDERING (RenderPipeline.render)
+  ═════════════════════════════════════
+  │
+  ├── [If indirect] Compute culling shader
+  │   └── Tests each instance, writes survivors to indirect buffer
+  │
+  ├── Vertex Shader (vs_main)
+  │   ├── Fetch ECS transform from storage buffer
+  │   ├── [If skinned] Apply bone matrices + blend weights
+  │   ├── Apply scale, rotation (quaternion), translation
+  │   └── Output: clipPos, worldPos, worldNormal, uv
+  │
+  ├── Fragment Shader (fs_main)
+  │   ├── Sample albedo, normal, packed (ORM) textures
+  │   ├── Decode normal from map (TBN transform)
+  │   ├── PBR Lighting: GGX distribution, Smith geometry, Schlick Fresnel
+  │   ├── Ambient + directional light accumulation
+  │   └── Output: tonemapped + gamma-corrected color
+  │
+  ▼
+  HTML CANVAS
+  ═══════════
+  Final composited frame presented to screen
+</code></pre>
+
+<hr>
+
+<h2>Memory Model & Buffer Layout</h2>
+
+<h3>GPU Buffer Inventory</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Buffer</th>
+        <th>Type</th>
+        <th>Owner</th>
+        <th>Binding</th>
+        <th>Update Frequency</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>Camera Uniform</strong></td>
+        <td>Uniform</td>
+        <td>WebGPUContext</td>
+        <td>@group(0) @binding(0)</td>
+        <td>Every frame</td>
+    </tr>
+    <tr>
+        <td><strong>ECS Storage</strong></td>
+        <td>Storage (read)</td>
+        <td>BatchManager (per batch)</td>
+        <td>@group(0) @binding(1)</td>
+        <td>Every frame (instance data)</td>
+    </tr>
+    <tr>
+        <td><strong>Material Uniform</strong></td>
+        <td>Uniform</td>
+        <td>StandardPBRMaterial</td>
+        <td>@group(1) @binding(4)</td>
+        <td>On material change</td>
+    </tr>
+    <tr>
+        <td><strong>Skeleton Uniform</strong></td>
+        <td>Uniform</td>
+        <td>SkeletonManager</td>
+        <td>@group(2) @binding(0)</td>
+        <td>Every frame (if animated)</td>
+    </tr>
+    <tr>
+        <td><strong>Vertex Buffer</strong></td>
+        <td>Vertex</td>
+        <td>User / Geometry</td>
+        <td>@location(0..4)</td>
+        <td>Static (upload once)</td>
+    </tr>
+    <tr>
+        <td><strong>Index Buffer</strong></td>
+        <td>Index</td>
+        <td>User / Geometry</td>
+        <td>setIndexBuffer</td>
+        <td>Static (upload once)</td>
+    </tr>
+    <tr>
+        <td><strong>Indirect Buffer</strong></td>
+        <td>Indirect + Storage</td>
+        <td>BatchManager (per batch)</td>
+        <td>@group(0) @binding(3) (compute)</td>
+        <td>Every frame (GPU write)</td>
+    </tr>
+    <tr>
+        <td><strong>Bone Matrices</strong></td>
+        <td>Uniform</td>
+        <td>SkeletonManager</td>
+        <td>@group(2) @binding(0)</td>
+        <td>Every frame (if animated)</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Per-Instance ECS Layout (14 floats / 56 bytes)</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Offset (floats)</th>
+        <th>Offset (bytes)</th>
+        <th>Field</th>
+        <th>Type</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td>0</td>
+        <td>Padding / Reserved</td>
+        <td><code>f32</code></td>
+    </tr>
+    <tr>
+        <td>1–3</td>
+        <td>4–12</td>
+        <td>World Position (xyz)</td>
+        <td><code>vec3&lt;f32&gt;</code></td>
+    </tr>
+    <tr>
+        <td>4–7</td>
+        <td>16–28</td>
+        <td>World Rotation Quaternion (xyzw)</td>
+        <td><code>vec4&lt;f32&gt;</code></td>
+    </tr>
+    <tr>
+        <td>8–10</td>
+        <td>32–40</td>
+        <td>World Scale (xyz)</td>
+        <td><code>vec3&lt;f32&gt;</code></td>
+    </tr>
+    <tr>
+        <td>11–13</td>
+        <td>44–52</td>
+        <td>Padding / Reserved</td>
+        <td><code>f32 × 3</code></td>
+    </tr>
+    </tbody>
+</table>
+
+<p>The vertex shader accesses this with:</p>
+
+<pre><code>let base = iIdx * 14u;
+let ecsPos = vec3&lt;f32&gt;(ecs[base + 1u], ecs[base + 2u], ecs[base + 3u]);
+let ecsRot = vec4&lt;f32&gt;(ecs[base + 4u], ecs[base + 5u], ecs[base + 6u], ecs[base + 7u]);
+let ecsScale = vec3&lt;f32&gt;(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
+</code></pre>
+
+<h3>Material Uniform Layout (32 bytes)</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Offset (bytes)</th>
+        <th>Field</th>
+        <th>Type</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0–12</td>
+        <td><code>baseColor</code></td>
+        <td><code>vec4&lt;f32&gt;</code> (RGBA)</td>
+    </tr>
+    <tr>
+        <td>16</td>
+        <td><code>metallic</code></td>
+        <td><code>f32</code></td>
+    </tr>
+    <tr>
+        <td>20</td>
+        <td><code>roughness</code></td>
+        <td><code>f32</code></td>
+    </tr>
+    <tr>
+        <td>24</td>
+        <td><code>mapFormat</code></td>
+        <td><code>f32</code> (0.0 = ARM, 1.0 = MRAO)</td>
+    </tr>
+    <tr>
+        <td>28</td>
+        <td><code>_padding</code></td>
+        <td><code>f32</code></td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Bind Group Layout Convention</h2>
+
+<p>The engine uses a fixed bind group layout convention across all PBR shaders:</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Group</th>
+        <th>Binding</th>
+        <th>Resource</th>
+        <th>Type</th>
+        <th>Scope</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td rowspan="2"><strong>@group(0)</strong></td>
+        <td>0</td>
+        <td>Camera</td>
+        <td>Uniform</td>
+        <td>Per-frame (shared across all batches)</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>ECS Instance Data</td>
+        <td>Storage (read)</td>
+        <td>Per-batch</td>
+    </tr>
+    <tr>
+        <td rowspan="5"><strong>@group(1)</strong></td>
+        <td>0</td>
+        <td>Sampler</td>
+        <td>Sampler</td>
+        <td>Per-material</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>Albedo Texture</td>
+        <td>Texture 2D</td>
+        <td>Per-material</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td>Normal Texture</td>
+        <td>Texture 2D</td>
+        <td>Per-material</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>Packed ORM Texture</td>
+        <td>Texture 2D</td>
+        <td>Per-material</td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td>Material Params</td>
+        <td>Uniform</td>
+        <td>Per-material</td>
+    </tr>
+    <tr>
+        <td><strong>@group(2)</strong></td>
+        <td>0</td>
+        <td>Skeleton Bone Matrices</td>
+        <td>Uniform</td>
+        <td>Per-skinned-mesh (only if <code>useSkinning</code>)</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Vertex Layout Variants</h2>
+
+<p>The engine supports two vertex stride configurations, dynamically selected based on whether the mesh is skinned:</p>
+
+<h3>Static Mesh (8 floats / 32 bytes)</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Location</th>
+        <th>Format</th>
+        <th>Offset</th>
+        <th>Attribute</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td><code>float32x3</code></td>
+        <td>0</td>
+        <td>Position</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>float32x3</code></td>
+        <td>12</td>
+        <td>Normal</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><code>float32x2</code></td>
+        <td>24</td>
+        <td>UV</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Skinned Mesh (16 floats / 64 bytes)</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th>Location</th>
+        <th>Format</th>
+        <th>Offset</th>
+        <th>Attribute</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td><code>float32x3</code></td>
+        <td>0</td>
+        <td>Position</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>float32x3</code></td>
+        <td>12</td>
+        <td>Normal</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><code>float32x2</code></td>
+        <td>24</td>
+        <td>UV</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><code>float32x4</code></td>
+        <td>32</td>
+        <td>Joint Indices</td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>float32x4</code></td>
+        <td>48</td>
+        <td>Joint Weights</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>API / Import Map</h2>
+
+<table>
+    <thead>
+    <tr>
+        <th>Import Path</th>
+        <th>Exports</th>
+        <th>Purpose</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>'null-graph'</code></td>
+        <td><code>NullGraph</code>, <code>Camera</code></td>
+        <td>Core engine class and camera controller</td>
+    </tr>
+    <tr>
+        <td><code>'null-graph/geometry'</code></td>
+        <td><code>Primitives</code>, <code>StandardLayout</code>, <code>Geometry</code>, <code>GeometryBuilder</code></td>
+        <td>Procedural mesh generation and GPU upload</td>
+    </tr>
+    <tr>
+        <td><code>'null-graph/materials'</code></td>
+        <td><code>buildPBRShader</code>, <code>StandardPBRMaterial</code>, <code>PBRChunks</code></td>
+        <td>PBR shader generation and material management</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>GLBParser</code></td>
+        <td>GLB file loading and parsing</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>Animator</code></td>
+        <td>Skeletal animation evaluation</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>SkeletonManager</code></td>
+        <td>GPU bone matrix buffer management</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>PerformanceWidget</code></td>
+        <td>On-screen FPS/CPU/GPU overlay</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>GPUProfiler</code></td>
+        <td>GPU timestamp-based profiling</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>RenderPassNode</code>, <code>RenderPipeline</code></td>
+        <td>Pass graph and command encoding</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>BatchManager</code>, <code>BufferManager</code></td>
+        <td>Batch lifecycle and GPU buffer creation</td>
+    </tr>
+    <tr>
+        <td><em>Internal</em></td>
+        <td><code>MathUtils</code></td>
+        <td>Matrix/vector math and quaternion interpolation</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>Key Design Principles</h2>
+
+<ol>
+    <li><strong>Pass-and-Batch Architecture</strong>: All rendering is organized into named render passes, each containing ordered batches. This maps directly to WebGPU's command encoding model and facilitates multi-pass rendering (shadow maps, G-buffers, post-processing).</li>
+
+    <li><strong>Data-Oriented Instancing</strong>: Instance transforms are stored in GPU storage buffers, not uniform arrays. This enables large instance counts (thousands) with a single draw call and supports GPU-driven culling via compute shaders.</li>
+
+    <li><strong>Dynamic Shader Generation</strong>: Shaders are assembled at runtime from composable WGSL chunks based on material configuration (static vs. skinned, texture formats). This avoids shader permutation explosion while maintaining flexibility.</li>
+
+    <li><strong>Automatic Pipeline Layout</strong>: The engine uses <code>layout: 'auto'</code> for pipeline creation, allowing WebGPU to derive bind group layouts from shader reflection. This eliminates manual layout management while ensuring type safety.</li>
+
+    <li><strong>Allocation-Conscious Animation</strong>: The <code>Animator</code> pre-allocates all typed arrays at construction and writes interpolation results into existing buffers at offsets — producing zero garbage during animation evaluation.</li>
+
+    <li><strong>Asynchronous GPU Readback</strong>: The <code>GPUProfiler</code> uses non-blocking <code>mapAsync</code> with a guard flag to prevent overlapping measurements, ensuring the CPU never stalls waiting for GPU timestamps.</li>
+
+    <li><strong>Self-Contained UI</strong>: The <code>PerformanceWidget</code> self-injects its CSS and HTML, requiring no external stylesheets or markup. It supports both mouse and touch dragging for repositioning.</li>
+
+    <li><strong>Consistent Coordinate Convention</strong>: Column-major matrices, right-handed coordinate system, quaternion rotation (xyzw). The vertex shader applies transforms in TRS order: Scale → Rotate → Translate.</li>
+</ol>
+
+<hr>
+
+<h2>Minimal Application Template</h2>
+
+<pre><code>import { NullGraph, Camera } from 'null-graph';
+import { Primitives, StandardLayout } from 'null-graph/geometry';
+import { buildPBRShader, StandardPBRMaterial } from 'null-graph/materials';
+
+async function main() {
+    // 1. Initialize engine
+    const canvas = document.getElementById('gpuCanvas');
+    const engine = new NullGraph();
+    await engine.init(canvas);
+
+    // 2. Create camera
+    const camera = new Camera(75, canvas.width / canvas.height, 0.1, 1000.0);
+
+    // 3. Create render pass
+    const mainPass = engine.createPass({ name: 'Main', isMainScreenPass: true });
+
+    // 4. Create geometry
+    const geom = Primitives.createCube(StandardLayout, 2, 2, 2);
+    geom.upload(engine);
+
+    // 5. Create material
+    const material = new StandardPBRMaterial(engine, {
+        baseColor: [0.1, 0.5, 0.9, 1.0],
+        metallicMultiplier: 0.2,
+        roughnessMultiplier: 0.5
+    });
+
+    // 6. Create batch
+    const batch = engine.createBatch(mainPass, {
+        shaderCode: buildPBRShader({ useSkinning: false }),
+        strideFloats: 14,
+        maxInstances: 1,
+        vertexLayouts: geom.layout.getWebGPUDescriptor(),
+        depthWriteEnabled: true
+    });
+
+    // 7. Attach material and geometry
+    material.applyToBatch(batch);
+    engine.setBatchGeometry(batch, geom.vertexBuffer, geom.indexBuffer, geom.indices.length);
+
+    // 8. Set instance data
+    const instanceData = new Float32Array([
+        0, 0, 0, 0,   // padding + position xyz
+        0, 0, 0, 1,   // rotation xyzw
+        1, 1, 1,      // scale xyz
+        1, 1, 1       // reserved
+    ]);
+    engine.updateBatchData(batch, instanceData, 1);
+
+    // 9. Render loop
+    function frame() {
+        camera.updateView(
+            [Math.sin(performance.now() * 0.001) * 8, 3, Math.cos(performance.now() * 0.001) * 8],
+            [0, 0, 0]
+        );
+        engine.updateCamera(camera);
+        engine.render();
+        requestAnimationFrame(frame);
+    }
+
+    frame();
+}
+
+main();
+</code></pre>

@@ -1,0 +1,287 @@
+<blockquote>
+    <p>This guide walks through creating your first rendered object in NullGraph using the engine's Render Batch architecture, built-in geometry generators, and PBR material system.</p>
+</blockquote>
+
+<div class="sandbox-cta-container" style="background: #111; border: 1px solid #33e6cc; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+    <h2 style="margin-top: 0; color: #fff;">Interactive Sandbox</h2>
+    <p style="color: #aaa; margin-bottom: 20px;">Experiment with this code in a dedicated WebGPU environment.</p>
+    <!-- Notice the target="_blank", this opens the new tab we talked about -->
+    <a href="tutorial.html?id=tutorial-hello-world" target="_blank" style="display: inline-block; background: #33e6cc; color: #000; font-weight: bold; padding: 12px 24px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px;">
+        Launch Editor
+        <svg style="vertical-align: middle; margin-left: 8px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+    </a>
+</div>
+<p>Adjust the metallic and roughness values in the sandbox to see real-time changes.</p>
+<hr>
+
+<h2>Overview</h2>
+
+<p>The Quick Start pipeline follows these core steps:</p>
+
+<ol>
+    <li>Initialize the <code>NullGraph</code> engine and size the canvas.</li>
+    <li>Create a primary screen render pass.</li>
+    <li>Generate cube geometry using the built-in primitive system.</li>
+    <li>Create a PBR material using fallback textures.</li>
+    <li>Create and configure a Render Batch.</li>
+    <li><strong>Define and upload Data-Oriented instance data (ECS Layout) to the GPU.</strong></li>
+    <li><strong>Initialize the Camera system.</strong></li>
+    <li>Start the dynamic render loop.</li>
+</ol>
+
+<hr>
+
+<h2>Imports</h2>
+
+<p>Import the core engine, camera, geometry utilities, and material system.</p>
+
+<pre><code class="language-ts">
+import { NullGraph, Camera } from 'null-graph';
+import { Primitives, StandardLayout } from 'null-graph/geometry';
+import { buildPBRShader, StandardPBRMaterial } from 'null-graph/materials';
+</code></pre>
+
+<hr>
+
+<h2>Engine Initialization</h2>
+
+<h3><code>new NullGraph()</code></h3>
+
+<p>Creates a new engine instance. It is best practice to handle canvas sizing dynamically before initializing the engine.</p>
+
+<pre><code class="language-ts">
+const canvas = document.getElementById('gpuCanvas') as HTMLCanvasElement;
+canvas.width = canvas.clientWidth || 800;
+canvas.height = Math.max(1, canvas.clientHeight || 600);
+
+const engine = new NullGraph();
+await engine.init(canvas);
+</code></pre>
+
+<hr>
+
+<h2>Creating a Render Pass</h2>
+
+<p>Creates the main render pass responsible for presenting graphics to the screen.</p>
+
+<pre><code class="language-ts">
+const mainPass = engine.createPass({
+    name: 'Main',
+    isMainScreenPass: true
+});
+</code></pre>
+
+<hr>
+
+<h2>Generating Geometry</h2>
+
+<p>Generates cube geometry using the engine's built-in geometry system and uploads the vertex/index data directly to GPU memory.</p>
+
+<pre><code class="language-ts">
+const cubeGeom = Primitives.createCube(StandardLayout, 2, 2, 2);
+cubeGeom.upload(engine);
+</code></pre>
+
+<hr>
+
+<h2>Creating a PBR Material</h2>
+
+<p>Creates a physically based material using the Cook-Torrance BRDF pipeline. Here, we use fallback textures provided by the engine's texture manager.</p>
+
+<pre><code class="language-ts">
+const material = new StandardPBRMaterial(engine, {
+    albedoMap: engine.textureManager.fallbackWhite,
+    normalMap: engine.textureManager.fallbackNormal,
+    packedMap: engine.textureManager.fallbackWhite,
+    packedMapFormat: "ARM",
+    baseColor: [0.1, 0.5, 0.9, 1.0],
+    metallicMultiplier: 0.2,
+    roughnessMultiplier: 0.5
+});
+</code></pre>
+
+<hr>
+
+<h2>Creating a Render Batch & Binding</h2>
+
+<p>A Render Batch is the GPU rendering workload. After creating it, we bind our material and geometry buffers to it.</p>
+
+<pre><code class="language-ts">
+const cubeBatch = engine.createBatch(mainPass, {
+    shaderCode: buildPBRShader({ useSkinning: false }),
+    strideFloats: 14,
+    maxInstances: 1,
+    vertexLayouts: cubeGeom.layout.getWebGPUDescriptor(),
+    depthWriteEnabled: true
+});
+
+// Bind materials and geometry
+material.applyToBatch(cubeBatch);
+engine.setBatchGeometry(
+    cubeBatch,
+    cubeGeom.vertexBuffer!,
+    cubeGeom.indexBuffer!,
+    cubeGeom.indices.length
+);
+</code></pre>
+
+<hr>
+
+<h2>Instance Data Layout (Data-Oriented ECS)</h2>
+
+<p>NullGraph uses a flat, Data-Oriented approach for entity data rather than heavy JavaScript objects. We use a single <code>Float32Array</code> mapped to a <strong>14-float stride</strong> per instance. This translates directly to the GPU buffer.</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Indices</th>
+        <th>Component</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><code>[0, 1, 2]</code></td>
+        <td><strong>Position</strong></td>
+        <td>X, Y, Z coordinates in world space.</td>
+    </tr>
+    <tr>
+        <td><code>[3, 4, 5, 6]</code></td>
+        <td><strong>Rotation</strong></td>
+        <td>Quaternion X, Y, Z, W for 3D rotation.</td>
+    </tr>
+    <tr>
+        <td><code>[7, 8, 9]</code></td>
+        <td><strong>Scale</strong></td>
+        <td>X, Y, Z local scale multipliers (Defaults to 1.0).</td>
+    </tr>
+    <tr>
+        <td><code>[10, 11, 12, 13]</code></td>
+        <td><strong>Color / Tint</strong></td>
+        <td>R, G, B, A multipliers (Defaults to 1.0).</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3><code>engine.updateBatchData()</code></h3>
+<p>Uploads this flat instance array directly into the batch storage buffer.</p>
+
+<pre><code class="language-ts">
+const initialData = new Float32Array(14);
+
+// Set Scale (indices 7, 8, 9) to 1.0
+initialData[7] = 1.0;
+initialData[8] = 1.0;
+initialData[9] = 1.0;
+
+// Set RGBA Tint (indices 10, 11, 12, 13) to 1.0
+initialData[10] = 1.0;
+initialData[11] = 1.0;
+initialData[12] = 1.0;
+initialData[13] = 1.0;
+
+engine.updateBatchData(cubeBatch, initialData, 1);
+</code></pre>
+
+<hr>
+
+<h2>Camera & Render Loop</h2>
+
+<p>NullGraph requires a <code>Camera</code> to calculate the view and projection matrices. In the render loop, we calculate simulated time to dynamically orbit the camera around the cube.</p>
+
+<pre><code class="language-ts">
+// Initialize Camera: FOV, Aspect Ratio, Near Plane, Far Plane
+const camera = new Camera(75, canvas.width / canvas.height, 0.1, 1000.0);
+
+function frame() {
+    // Safety check to ensure engine wasn't destroyed during hot-reloads
+    if (!engine.isDestroyed) {
+
+        // Calculate dynamic orbit based on time
+        const simTime = performance.now() * 0.001;
+        camera.updateView(
+            [Math.sin(simTime) * 6, 3, Math.cos(simTime) * 6], // Eye Position
+            [0, 0, 0]                                          // Target Position
+        );
+
+        // Push camera updates to the GPU and render
+        engine.updateCamera(camera);
+        engine.render();
+
+        requestAnimationFrame(frame);
+    }
+}
+
+frame();
+</code></pre>
+
+<hr>
+
+<h2>Complete Example</h2>
+
+<pre><code class="language-ts">
+import { NullGraph, Camera } from 'null-graph';
+import { Primitives, StandardLayout } from "null-graph/geometry";
+import { buildPBRShader, StandardPBRMaterial } from "null-graph/materials";
+
+async function main() {
+    const canvas = document.getElementById('gpuCanvas') as HTMLCanvasElement;
+    canvas.width = canvas.clientWidth || 800;
+    canvas.height = Math.max(1, canvas.clientHeight || 600);
+
+    const engine = new NullGraph();
+    await engine.init(canvas);
+
+    const mainPass = engine.createPass({ name: 'Main', isMainScreenPass: true });
+
+    const cubeGeom = Primitives.createCube(StandardLayout, 2, 2, 2);
+    cubeGeom.upload(engine);
+
+    const material = new StandardPBRMaterial(engine, {
+        albedoMap: engine.textureManager.fallbackWhite,
+        normalMap: engine.textureManager.fallbackNormal,
+        packedMap: engine.textureManager.fallbackWhite,
+        packedMapFormat: "ARM",
+        baseColor: [0.1, 0.5, 0.9, 1.0],
+        metallicMultiplier: 0.2,
+        roughnessMultiplier: 0.5
+    });
+
+    const cubeBatch = engine.createBatch(mainPass, {
+        shaderCode: buildPBRShader({ useSkinning: false }),
+        strideFloats: 14,
+        maxInstances: 1,
+        vertexLayouts: cubeGeom.layout.getWebGPUDescriptor(),
+        depthWriteEnabled: true
+    });
+
+    material.applyToBatch(cubeBatch);
+    engine.setBatchGeometry(cubeBatch, cubeGeom.vertexBuffer!, cubeGeom.indexBuffer!, cubeGeom.indices.length);
+
+    const initialData = new Float32Array(14);
+    initialData[7] = 1.0;  // Scale X
+    initialData[8] = 1.0;  // Scale Y
+    initialData[9] = 1.0;  // Scale Z
+    initialData[10] = 1.0; // Color R
+    initialData[11] = 1.0; // Color G
+    initialData[12] = 1.0; // Color B
+    initialData[13] = 1.0; // Color A
+    engine.updateBatchData(cubeBatch, initialData, 1);
+
+    const camera = new Camera(75, canvas.width / canvas.height, 0.1, 1000.0);
+
+    function frame() {
+        if (!engine.isDestroyed) {
+            const simTime = performance.now() * 0.001;
+            camera.updateView([Math.sin(simTime) * 6, 3, Math.cos(simTime) * 6], [0, 0, 0]);
+            engine.updateCamera(camera);
+            engine.render();
+            requestAnimationFrame(frame);
+        }
+    }
+
+    frame();
+}
+
+main().catch(err => console.error("Engine Crash:", err));
+</code></pre>
