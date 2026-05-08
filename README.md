@@ -1,29 +1,66 @@
 # NullGraph Test Engine
 
-A minimal, standalone boilerplate demonstrating the **NullGraph Data-Oriented WebGPU rendering pipeline**.
+<div align="center">
 
-This repository serves as a live test environment and reference implementation for NullGraph. It showcases how to bypass traditional Object-Oriented scene graphs (such as Three.js) and efficiently render tens of thousands of instanced entities by mapping raw `Float32Array` data directly to WebGPU storage buffers.
+![NullGraph](https://img.shields.io/badge/NullGraph-v1.0.0-33e6cc?style=for-the-badge)
+![WebGPU](https://img.shields.io/badge/WebGPU-API-ff6b6b?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178c6?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-51cf66?style=for-the-badge)
+
+**Zero scene graph. Zero copy. Infinite scale.**
+
+</div>
 
 ---
 
 ## Overview
 
-When executed, this demo generates a contiguous memory buffer representing **10,000 entities**, each containing:
+**NullGraph Test Engine** is a comprehensive, interactive testing ground and documentation hub for the NullGraph rendering ecosystem. Far more than a simple boilerplate, it provides a fully-featured **WebGPU laboratory** where developers can:
 
-- ID
-- Position
-- Scale
-- Color
+- Explore **20+ interactive WebGPU shader experiments** (from Reaction-Diffusion to Quantum Nebula)
+- Benchmark **Data-Oriented Design patterns** (AoS, SoA, AoSoA) against traditional OOP scene graphs
+- Test **3D rendering pipelines** including GPU culling, PBR materials, skeletal animations, and post-processing
+- Browse the **complete NullGraph API reference** with live documentation
+- Experiment with **engine controls** in real-time using the integrated control panel
 
-This buffer is transferred directly to the GPU, enabling the rendering of a large number of instances with minimal CPU involvement. The scene can be navigated using a built-in camera powered by `gl-matrix`.
+The engine renders a massive grid of instanced entities by mapping raw `Float32Array` data directly to WebGPU storage buffers—bypassing traditional scene graphs entirely.
 
-### Key Characteristics
+---
 
-- No `new Mesh()` allocations
-- No scene graph traversal (`.traverse()`)
-- No garbage collection spikes
-- Fully **WebGPU-based rendering pipeline**
-- 100% **Data-Oriented Design (DOD)**
+## Live Demo Architecture
+
+The test engine (`index.html`) is structured into three main panels:
+
+### Left Sidebar — Navigation & Demos
+- **NullGraph v1.0.0 Documentation** — Complete API reference covering Core Engine, Geometry, Materials, Loaders, and Profiling tools
+- **WebGPU Experiments** — 15+ compute shader and fragment shader artistic demos
+- **Architecture Demos** — AoS, SoA, AoSoA, and OOP benchmark visualizations
+- **3D Geometry Examples** — Cube rendering, GPU culling, LOD, and mega-buffer techniques
+- **3D Model & Animation** — GLB loading, PBR materials, skeletal animation, and post-processing
+- **Game Examples** — Space Fleet (compute-culled) and Fireworks (DOD physics)
+
+### Center Canvas — WebGPU Rendering Surface
+- Full-screen WebGPU canvas (`#gpuCanvas`) rendering thousands of instanced entities
+- Interactive camera controls for scene navigation
+- Loading screen with initialization spinner
+
+### Right Control Panel — Real-Time Tuning
+- **Engine Controls** — Simulation speed, wave amplitude, aura RGB channels
+- **Reaction-Diffusion Parameters** — Feed rate, kill rate, base/peak colors
+- **Pattern Presets** — Coral Maze, Mitosis, Boiling Chaos, Pulsating Spots, etc.
+- **Demo Documentation** — Dynamic information panel showing concepts and details for each selected demo
+
+---
+
+## Key Characteristics
+
+- ✅ **No `new Mesh()` allocations** — Raw Float32Array buffers only
+- ✅ **No scene graph traversal** — No `.traverse()` or `.updateMatrixWorld()`
+- ✅ **No garbage collection spikes** — Pre-allocated memory pools
+- ✅ **100% WebGPU rendering pipeline** — No WebGL fallback
+- ✅ **100% Data-Oriented Design (DOD)** — Cache-friendly contiguous memory layouts
+- ✅ **Built-in Monaco Editor** — View and edit shader code live
+- ✅ **MathJax support** — Renders mathematical notation in documentation
 
 ---
 
@@ -31,84 +68,206 @@ This buffer is transferred directly to the GPU, enabling the rendering of a larg
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- A WebGPU-compatible browser:
-    - Chrome 113+
-    - Edge 113+
-    - Safari (with WebGPU feature flags enabled)
-
----
+- **Node.js** v16 or higher
+- **WebGPU-compatible browser:**
+  - Chrome 113+
+  - Edge 113+
+  - Safari (WebGPU feature flags enabled)
+  - Firefox Nightly (`dom.webgpu.enabled` flag)
 
 ### Installation
 
-Clone the repository:
-
 ```bash
+# Clone the repository
 git clone https://github.com/Vikas593-cloud/NullGraph-Test-Engine.git
 cd test-engine
-```
-# Setup Instructions
 
-## Install dependencies (including null-graph and build tools)
+# Install dependencies (including null-graph and build tools)
+npm install
+
+# Start the development server
+npm run dev
+```
+
+# Test Engine
+
+Open your browser and navigate to:
+
+```text
+http://127.0.0.1:8000
+```
+# Test Engine
+
+A high-performance WebGPU rendering engine focused on Data-Oriented Design (DOD), ECS-style memory layouts, GPU compute workflows, and advanced rendering experiments.
+
+---
+
+## Running the Project
+
+Start the development server:
 
 ```bash
 npm install
-```
-### Start the development server
-```bash
 npm run dev
 ```
-Open in browser
 
-Navigate to:
-```http request
-http://127.0.0.1:8000
+Then open:
+
+```text
+http://localhost:8000
 ```
 
+(or the port specified in your terminal output)
 
-(or the port specified in your terminal)
-# Project Overview
+---
 
-This project is intentionally lightweight and uses **esbuild** for fast bundling.
-
-## Project Structure
-
-## File Details
-
-### `src/main.ts`
-
-- Initializes the NullGraph engine
-- Sets up the camera
-- Generates the raw ECS (`Float32Array`) buffer sent directly to the GPU
-
-### `public/index.html`
-
-- Provides a minimal full-screen canvas for rendering
-
-### `public/bundle.js`
-
-- Compiled JavaScript output generated by esbuild
-
-## How It Works
+# How It Works
 
 The core rendering pipeline relies on direct memory mapping:
+
+- No intermediate objects
+- No pointer chasing
+- No unnecessary garbage collection pressure
+
+## Rendering Pipeline
 
 ```ts
 // 1. Allocate a flat array in memory (14 floats per entity)
 const ecsBuffer = new Float32Array(10000 * 14);
 
 // 2. Populate entity data (typically handled in a Web Worker)
-ecsBuffer[1] = x;
-ecsBuffer[2] = y;
-ecsBuffer[3] = z;
+ecsBuffer[1] = x;   // Position X
+ecsBuffer[2] = y;   // Position Y
+ecsBuffer[3] = z;   // Position Z
 
 // 3. Upload the raw buffer directly to the GPU
 engine.updateEntities(ecsBuffer, 10000);
+
+// 4. GPU reads buffers directly — no CPU-side tree traversal
 ```
 
+This approach eliminates intermediate abstractions and allows the GPU to consume structured data directly from contiguous memory.
 
-This approach eliminates intermediate abstractions and allows the GPU to consume structured data directly from memory.
+---
 
-### License
+# Available Demos
+
+## WebGPU Experiments (Compute & Fragment Shaders)
+
+| Demo | Description |
+|---|---|
+| Morphogenesis (Alan Turing, 1952) | Reaction-Diffusion pattern generation |
+| Quantum Core | Quantum-inspired particle simulation |
+| Singularity | Gravitational lensing effect |
+| Aetherial Flow | Fluid dynamics simulation |
+| Deferred Rendering | G-Buffer and lighting pass demo |
+| Cymatic Resonance | Sound wave visualization |
+| Quantum Nebula | Volumetric nebula rendering |
+| Gyroid Resonance | Triply periodic minimal surface |
+| Stellarator Flux | Magnetic confinement visualization |
+| Hopf Fibration | 4D topology projected to 3D |
+| Aizawa Canvas | Chaotic attractor visualization |
+| Iridescent Leviathan | Iridescent surface shading |
+
+---
+
+## Architecture Demos (Memory Layout Benchmarks)
+
+| Demo | Description |
+|---|---|
+| AoS (Array of Structs) | Standard DOD baseline |
+| SoA (Struct of Arrays) | Cache-friendly contiguous memory |
+| AoSoA (Chunked SoA) | AAA industry standard for SIMD vectorization |
+| OOP (Scene Graph) | Traditional pointer-chasing stress test |
+
+---
+
+## 3D Rendering Demos
+
+| Demo | Description |
+|---|---|
+| 3D Geometry (Cube) | Basic instanced rendering |
+| 3D Geometry + Light | Dot-product normal lighting |
+| GPU Culling (Indirect) | Compute shader frustum culling |
+| GPU Level of Detail | Dynamic LOD selection |
+| GPU Mega Buffer | Massive buffer streaming |
+
+---
+
+## Advanced 3D Features
+
+| Demo | Description |
+|---|---|
+| PBR Test | Rusty metal monkey with Cook-Torrance BRDF |
+| Mixamo Model | Animated character with PBR materials |
+| Simple Butterfly | GPU skeletal animation |
+| Animation + Post-Processing | Skinned mesh with CRT effect |
+| Space Fleet | Compute-culled fleet with HUD post-processing |
+| Fireworks Simulation | 15,000+ DOD physics particles |
+
+---
+
+# Tech Stack
+
+| Technology | Details |
+|---|---|
+| Language | TypeScript 5.0+ |
+| Graphics API | WebGPU (no WebGL fallback) |
+| Math Library | gl-matrix (high-performance vector/matrix operations) |
+| Bundler | esbuild (fast, zero-config bundling) |
+| Code Editor | Monaco Editor (VS Code engine) |
+| Math Rendering | MathJax 3 (LaTeX support) |
+| Font | Inter (modern sans-serif) |
+
+---
+
+# Browser Compatibility
+
+| Browser | Minimum Version | Notes |
+|---|---|---|
+| Chrome | 113+ | Full WebGPU support |
+| Edge | 113+ | Chromium-based, full support |
+| Safari | Technology Preview | Requires WebGPU flag |
+| Firefox | Nightly | Enable `dom.webgpu.enabled` |
+
+---
+
+# Development Notes
+
+- Built around Data-Oriented Design (DOD) principles
+- GPU-first rendering architecture
+- Optimized for large-scale entity processing
+- Minimal CPU-side abstraction overhead
+- Designed for experimentation with compute shaders and advanced rendering techniques
+bash
+
+# License
 
 This project is released under the MIT License.
+
+---
+
+# Related Projects
+
+## NullGraph Core Engine
+
+The standalone rendering library powering the engine architecture.
+
+- GitHub: https://github.com/Vikas593-cloud/NullGraph
+- npm: Search for `null-graph`
+
+---
+
+## Axion Engine
+
+A full game engine being built on top of NullGraph.
+
+- Live Preview: https://axion-engine.web.app/
+
+---
+
+<div align="center">
+
+Built with **NullGraph** — Zero scene graph. Zero copy. Infinite scale.
+
+</div>

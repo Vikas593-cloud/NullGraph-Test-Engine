@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npx shx cp -r public/* dist/ && esbuild src/main.ts --bundle --outfile=dist/bundle.js --servedir=dist --watch",
-    "build": "esbuild src/main.ts --bundle --outfile=dist/bundle.js --minify && npx shx cp -r public/* dist/",
+    "dev": "npx shx cp -r public/* dist/ && esbuild src/main.ts src/tutorial.ts --bundle --outdir=dist --servedir=dist --watch",
+    "build": "npx shx cp -r public/* dist/ && esbuild src/main.ts src/tutorial.ts --bundle --outdir=dist --minify",
     "serve": "serve dist",
     "deploy": "npm run build && firebase deploy"
   },
@@ -17,7 +17,7 @@
     "firebase": "^12.11.0",
     "gl-matrix": "^3.4.4",
     "gsap": "^3.14.2",
-    "null-graph": "^0.0.7"
+    "null-graph": "^1.0.0"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.69",
