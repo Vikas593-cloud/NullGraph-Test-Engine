@@ -499,10 +499,22 @@ let ecsScale = vec3&lt;f32&gt;(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
 </table>
 
 <hr>
+<hr>
 
 <h2>Bind Group Layout Convention</h2>
 
-<p>The engine uses a fixed bind group layout convention across all PBR shaders:</p>
+<p>The engine uses a predictable bind group layout convention. While <code>@group(0)</code> and <code>@group(2)</code> are strictly defined by the engine for global frame data and skinning, <code>@group(1)</code> is dynamically assembled based on the material configuration.</p>
+
+<h3>Dynamic Texture & Material Binding (Group 1)</h3>
+<p>When attaching textures and materials via <code>BatchManager.attachTextureMaterial()</code>, the engine follows a strict sequential binding rule to ensure shaders easily map to CPU-side resources:</p>
+<ul>
+    <li><strong>Binding 0:</strong> The <code>GPUSampler</code> is <em>always</em> assigned to binding 0.</li>
+    <li><strong>Binding 1...N:</strong> Texture views are appended sequentially starting at binding 1 (e.g., Albedo at 1, Normal at 2, ORM at 3).</li>
+    <li><strong>Extra Entries:</strong> Any additional buffer bindings (like Material Uniforms for base color, roughness, etc.) are appended immediately after the texture sequence.</li>
+</ul>
+
+<h3>Standard PBR Layout</h3>
+<p>Following the sequential rules above, standard PBR shaders default to the following layout:</p>
 
 <table>
     <thead>
@@ -557,7 +569,7 @@ let ecsScale = vec3&lt;f32&gt;(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
         <td>4</td>
         <td>Material Params</td>
         <td>Uniform</td>
-        <td>Per-material</td>
+        <td>Per-material (appended after textures)</td>
     </tr>
     <tr>
         <td><strong>@group(2)</strong></td>
@@ -568,6 +580,9 @@ let ecsScale = vec3&lt;f32&gt;(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
     </tr>
     </tbody>
 </table>
+
+<h3>Compute vs. Render Bind Targeting</h3>
+<p>Because the engine supports indirect draw calls driven by compute shaders (GPU culling), custom bind groups can be explicitly targeted to different pipeline stages using <code>BatchManager.attachCustomBindGroup()</code>. By specifying a <code>target</code> parameter (<code>'render'</code>, <code>'compute'</code>, or <code>'both'</code>), the engine guarantees the bind group is created against the correct pipeline's layout, preventing layout mismatch errors during complex multi-stage passes.</p>
 
 <hr>
 
@@ -652,7 +667,71 @@ let ecsScale = vec3&lt;f32&gt;(ecs[base + 8u], ecs[base + 9u], ecs[base + 10u]);
     </tr>
     </tbody>
 </table>
+<h3>Indirect Draw Arguments Layout (20 bytes)</h3>
 
+<p>When a batch is flagged as <code>isIndirect: true</code>, the engine allocates a 20-byte buffer that strictly conforms to WebGPU's <code>GPUIndirectDrawIndexed</a></code> specification. This buffer is read/write in the compute shader (to accumulate the instance count) and read-only by the GPU command processor during the draw phase.</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Offset (bytes)</th>
+        <th>Field</th>
+        <th>WGSL Type</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>0</td>
+        <td><code>indexCount</code></td>
+        <td><code>u32</code></td>
+        <td>The number of indices to draw per instance (seeded by the CPU via <code>setBatchGeometry</code>).</td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>instanceCount</code></td>
+        <td><code>atomic&lt;u32&gt;</code></td>
+        <td>The number of surviving instances. The engine resets this to 0 at the start of the frame, and the compute shader increments it via <code>atomicAdd()</code>.</td>
+    </tr>
+    <tr>
+        <td>8</td>
+        <td><code>firstIndex</code></td>
+        <td><code>u32</code></td>
+        <td>Offset into the index buffer (typically 0).</td>
+    </tr>
+    <tr>
+        <td>12</td>
+        <td><code>baseVertex</code></td>
+        <td><code>u32</code> (or <code>i32</code>)</td>
+        <td>Offset into the vertex buffer (typically 0).</td>
+    </tr>
+    <tr>
+        <td>16</td>
+        <td><code>firstInstance</code></td>
+        <td><code>u32</code></td>
+        <td>The starting instance ID (typically 0).</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>The compute shader accesses this buffer as a storage variable to safely accumulate the draw count across concurrent threads:</p>
+
+<pre><code>struct IndirectDrawArgs {
+    indexCount: u32,
+    instanceCount: atomic&lt;u32&gt;,
+    firstIndex: u32,
+    baseVertex: u32,
+    firstInstance: u32,
+};
+
+@group(0) @binding(3) var&lt;storage, read_write&gt; drawArgs: IndirectDrawArgs;
+
+// Example Culling Logic
+if (is_visible) {
+    let writeIdx = atomicAdd(&drawArgs.instanceCount, 1u);
+    // Use writeIdx to pack data tightly into the culled storage buffer...
+}
+</code></pre>
 <hr>
 
 <h2>API / Import Map</h2>

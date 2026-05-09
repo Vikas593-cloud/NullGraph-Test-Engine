@@ -192,7 +192,7 @@ function executeInIframe(javascriptCode: string) {
         </script>
 
         <script type="importmap">
-        { "imports": { "null-graph": "https://esm.sh/null-graph@0.0.9", "null-graph/geometry": "https://esm.sh/null-graph@0.0.9/geometry", "null-graph/materials": "https://esm.sh/null-graph@0.0.9/materials" } }
+        { "imports": { "null-graph": "https://esm.sh/null-graph@1.0.1", "null-graph/geometry": "https://esm.sh/null-graph@1.0.1/geometry", "null-graph/materials": "https://esm.sh/null-graph@1.0.1/materials" ,"null-graph/profiler": "https://esm.sh/null-graph@1.0.1/profiler","null-graph/debug-ui": "https://esm.sh/null-graph@1.0.1/debug-ui"} }
         </script>
     </head>
     <body>

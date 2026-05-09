@@ -247,3 +247,62 @@ body.left-collapsed.right-collapsed #doc-overlay {
     margin: 0;
     font-size: 0.95rem;
 }
+
+/* =========================================
+   TABLES
+========================================= */
+.doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 30px 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    /* Required to make border-radius work on the table wrapper */
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.doc-content thead {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.doc-content th {
+    text-align: left;
+    padding: 16px 20px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    /* Cyan accent line separating the header from the body */
+    border-bottom: 2px solid rgba(51, 230, 204, 0.4);
+}
+
+.doc-content td {
+    padding: 14px 20px;
+    color: #ccc;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+/* Remove the bottom border from the very last row so it looks clean */
+.doc-content tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Subtle highlight when hovering over a row */
+.doc-content tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.doc-content tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Specific styling for table columns that just contain inline code
+   (Keeps it from looking too cluttered if a whole column is code) */
+.doc-content td code {
+    white-space: nowrap;
+}
