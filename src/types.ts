@@ -6,11 +6,28 @@ export interface UIState {
     auraR: number;
     auraG: number;
     auraB: number;
-    // New Turing Parameters
+
+    // Morphogenesis Parameters
     feedRate: number;
     killRate: number;
     baseColor: number[]; // [r, g, b]
     peakColor: number[]; // [r, g, b]
+
+    // --- NEW: Gyroid Resonance Parameters ---
+    coreColor: number[];     // [r, g, b]
+    exciteColor: number[];   // [r, g, b]
+    fractureColor: number[]; // [r, g, b]
+
+    // --- Aetherial Flow Params
+    curveColor: number[];     // [r, g, b]
+    fastColor: number[];   // [r, g, b]
+    pulseColor: number[]; // [r, g, b]
+
+    //--- Singularity ---
+    coolColor :number[],
+    hotColor:number[],
+    coreSingularityColor:number[],
+
     wantsRestart: boolean;
 }
 export interface DemoSection {
@@ -55,3 +72,4 @@ export type DemoRegistryEntry =
     setup?: never;  // Explicitly tells TS this won't exist here
     camera?: never;
 };
+

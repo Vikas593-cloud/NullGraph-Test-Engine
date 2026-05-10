@@ -1,8 +1,6 @@
 // demos/WebGPUExperiments/StellaratorFlux/index.ts
 import { NullGraph, Camera } from 'null-graph';
-import { stellarComputeShader, stellarRenderShader } from "./shaders";
 import { UIState } from "../../../types";
-import {bokehBloomPostProcessShader} from "../AetherialFlow/postProcessShaders";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupStellaratorFlux(engine: NullGraph, camera: Camera, getState: () => UIState) {
@@ -14,6 +12,11 @@ export async function setupStellaratorFlux(engine: NullGraph, camera: Camera, ge
         format: 'rgba16float',
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
+    const [computeRes,renderRes,postRes] = await Promise.all([
+        fetch('./shaders/demos/WebGPUExperiments/StellaratorFlux/stellar.compute.wgsl'),
+        fetch('./shaders/demos/WebGPUExperiments/StellaratorFlux/stellar.render.wgsl'),
+        fetch('./shaders/demos/WebGPUExperiments/AetherialFlow/bokehBloom.postprocess.wgsl')
+    ]);
 
     const offscreenDepth = engine.device.createTexture({
         size: [2048, 2048],
@@ -39,6 +42,10 @@ export async function setupStellaratorFlux(engine: NullGraph, camera: Camera, ge
             depthClearValue: 1.0, depthLoadOp: 'clear', depthStoreOp: 'store'
         }
     });
+
+    const stellarComputeShader = await computeRes.text();
+    const stellarRenderShader = await renderRes.text()
+    const bokehBloomPostProcessShader = await postRes.text();
 
     const physicsBatch = engine.createBatch(scenePass, {
         isIndirect: true,

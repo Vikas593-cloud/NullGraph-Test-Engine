@@ -72,6 +72,7 @@ export async function setupMorphogenesisAlanTuring1952(engine: NullGraph, camera
 
     // Run it once on boot
     initializeGrid();
+    let isDestroyed = false;
 
 
 
@@ -88,6 +89,7 @@ export async function setupMorphogenesisAlanTuring1952(engine: NullGraph, camera
     return {
         // Inside setupMorphogenesisAlanTuring1952 return block:
         update: (simTime: number) => {
+            if (isDestroyed) return;
             camera.bufferData[19] = simTime;
 
             const ui = getState();
@@ -117,6 +119,7 @@ export async function setupMorphogenesisAlanTuring1952(engine: NullGraph, camera
             cam.updateView(eye, controls.target);
         },
         destroy: () => {
+            isDestroyed=true;
             paramsBuffer.destroy(); // Clean up!
             engine.clearPasses();
         }

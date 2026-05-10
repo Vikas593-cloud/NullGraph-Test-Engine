@@ -1,7 +1,3 @@
-Here is the API reference for the `PerformanceWidget` class, formatted in the requested style.
-
----
-
 <blockquote>
     <p>The <code>PerformanceWidget</code> class provides a draggable, fixed-position on-screen display for real-time performance metrics in NullGraph. It renders FPS (frames per second), CPU frame time, and GPU frame time as both numerical readouts and a scrolling line graph — all injected directly into the DOM with self-contained CSS and touch/mouse drag support.</p>
 </blockquote>
@@ -26,7 +22,7 @@ Here is the API reference for the `PerformanceWidget` class, formatted in the re
     <li><strong>CSS Injection</strong>: Calls <code>injectCSS()</code> to add a <code>&lt;style&gt;</code> block with ID <code>ng-perf-style</code> to the document <code>&lt;head&gt;</code>. This is idempotent — if the style block already exists, it is not duplicated.</li>
     <li><strong>HTML Injection</strong>: Creates a <code>&lt;div&gt;</code> with ID <code>ng-perf-widget</code> containing:
         <ul>
-            <li>A metrics grid with three readouts: <strong>NET FPS</strong>, <strong>CPU</strong>, and <strong>GPU</strong>.</li>
+            <li>A metrics grid with three individual recessed boxes: <strong>NET FPS</strong>, <strong>CPU</strong>, and <strong>GPU</strong>.</li>
             <li>A <code>&lt;canvas&gt;</code> element (200×60 CSS pixels) for the scrolling history graph.</li>
         </ul>
     </li>
@@ -37,7 +33,7 @@ Here is the API reference for the `PerformanceWidget` class, formatted in the re
 <h3>Initial State</h3>
 
 <ul>
-    <li>FPS readout displays <code>60</code>.</li>
+    <li>FPS readout initially displays <code>---</code> (until the first full second of frames is calculated).</li>
     <li>CPU and GPU readouts display <code>0.0ms</code>.</li>
     <li>Graph history buffers are initialized with 60 zeros.</li>
     <li>Widget is positioned at <code>top: 20px; right: 20px</code> by default.</li>
@@ -62,16 +58,15 @@ Here is the API reference for the `PerformanceWidget` class, formatted in the re
     <li>Once per second (when <code>performance.now() - lastUpdate ≥ 1000</code>):
         <ul>
             <li>Calculates the true FPS: <code>(frameCount × 1000) / elapsed</code>.</li>
-            <li>Clamps the displayed value to a maximum of 144 FPS.</li>
-            <li>Updates the <code>#ng-fps</code> element text.</li>
+            <li>Updates the <code>#ng-fps</code> element text with the true, uncapped FPS value.</li>
             <li>Resets the frame counter and advances <code>lastUpdate</code> by exactly 1000ms (not to current time) to maintain a regular 1-second cadence regardless of frame timing irregularities.</li>
         </ul>
     </li>
 </ul>
 
-<h3>Clamping Rationale</h3>
+<h3>Uncapped Display Rationale</h3>
 
-<p>The 144 FPS display cap prevents the readout from showing unrealistically high values during light workloads (e.g., empty scenes running at thousands of FPS). The true frame rate is still available via the calculated value before clamping.</p>
+<p>The FPS calculation is intentionally uncapped. This ensures the widget accurately reflects true rendering output on modern high-refresh-rate monitors (e.g., 144Hz, 240Hz, 360Hz) and allows developers to measure maximum raw performance during uncapped benchmark tests.</p>
 
 <hr>
 
@@ -132,7 +127,7 @@ Here is the API reference for the `PerformanceWidget` class, formatted in the re
 <h4>Drawing Sequence</h4>
 
 <ol>
-    <li>Clears the canvas with <code>clearRect</code> (transparent background — the CSS <code>background: rgba(0,0,0,0.4)</code> on the canvas element provides the dark backdrop).</li>
+    <li>Clears the canvas with <code>clearRect</code> (transparent background — the CSS <code>background: rgba(0,0,0,0.5)</code> on the canvas element provides the dark backdrop).</li>
     <li>Scales the context by <code>dpr</code> so all subsequent drawing uses CSS pixel coordinates.</li>
     <li>Draws a horizontal reference line at the 16.6ms mark (representing 60 FPS target):
         <ul>
@@ -273,13 +268,12 @@ Here is the API reference for the `PerformanceWidget` class, formatted in the re
 <h3>Visual Design</h3>
 
 <ul>
-    <li>Fixed position in the viewport (<code>position: fixed</code>).</li>
-    <li>Dark semi-transparent background with backdrop blur (<code>backdrop-filter: blur(10px)</code>).</li>
-    <li>Rounded corners, subtle border, and box shadow for depth.</li>
-    <li>Monospace font for consistent numerical display.</li>
-    <li><code>z-index: 9999</code> to ensure visibility above most page content.</li>
-    <li><code>cursor: grab</code> with <code>:active</code> state changing to <code>grabbing</code> during drag.</li>
-    <li>The internal canvas has <code>pointer-events: none</code> so drag events pass through to the container.</li>
+    <li><strong>Glassmorphism:</strong> Dark, frosted-glass effect with a subtle linear gradient background, backdrop blur (<code>backdrop-filter: blur(12px)</code>), and refined drop shadows to simulate a high-end dev tool overlay.</li>
+    <li><strong>Drag Handle:</strong> Features a visual pill-shaped indicator at the top to communicate draggability.</li>
+    <li><strong>Structured Layout:</strong> Places each metric (FPS, CPU, GPU) into isolated, dark recessed boxes (<code>background: rgba(0, 0, 0, 0.4)</code>) for clear readability.</li>
+    <li><strong>Dual Typography:</strong> Uses a clean sans-serif font (<code>Inter</code>, system defaults) for labels, and strict monospace fonts (<code>JetBrains Mono</code>, <code>Fira Code</code>, etc.) for values to prevent horizontal text jittering as numbers rapidly change.</li>
+    <li><strong>Z-Index:</strong> <code>z-index: 9999</code> ensures visibility above most page content.</li>
+    <li><strong>Interactivity:</strong> <code>cursor: grab</code> with <code>:active</code> state changing to <code>grabbing</code>. The internal canvas has <code>pointer-events: none</code> so drag events pass through to the container.</li>
 </ul>
 
 <hr>
@@ -328,23 +322,26 @@ function frame() {
 
 <h2>Visual Reference</h2>
 
-<p>The widget renders as a compact panel with the following layout:</p>
+<p>The widget renders as a sleek, frosted-glass panel with the following layout:</p>
 
-<pre><code>┌─────────────────────────┐
-│  NET FPS   CPU    GPU   │
-│    60     4.2ms  5.1ms  │
-│                         │
-│  ┌───────────────────┐  │
-│  │  ╱╲   ╱╲          │  │  ← Yellow line: CPU history
-│  │ ╱  ╲_╱  ╲___      │  │  ← Cyan line: GPU history
-│  │─────────────────  │  │  ← Dim white reference line at 16.6ms (60 FPS)
-│  │                   │  │
-│  └───────────────────┘  │
-└─────────────────────────┘
+<pre><code>┌───────────────────────────┐
+│           [ ▬ ]           │  ← Drag indicator pill
+│ ┌───────┐┌───────┐┌───────┐
+│ │NET FPS││  CPU  ││  GPU  │
+│ │  240  ││ 4.2ms ││ 5.1ms │
+│ └───────┘└───────┘└───────┘
+│                           │
+│  ┌─────────────────────┐  │
+│  │  ╱╲   ╱╲            │  │  ← Yellow line: CPU history
+│  │ ╱  ╲_╱  ╲___        │  │  ← Cyan line: GPU history
+│  │───────────────────  │  │  ← Dim white reference line at 16.6ms (60 FPS)
+│  │                     │  │
+│  └─────────────────────┘  │
+└───────────────────────────┘
 </code></pre>
 
 <ul>
-    <li><strong>FPS</strong>: White, large text. Updates once per second.</li>
+    <li><strong>FPS</strong>: White monospace text. Updates once per second, showing true, uncapped frames.</li>
     <li><strong>CPU</strong>: Yellow, shows latest frame time in milliseconds.</li>
     <li><strong>GPU</strong>: Cyan when GPU data is available; gray <code>"N/A"</code> when not.</li>
     <li><strong>Graph</strong>: 60-sample scrolling history, rightmost point is most recent. Y-axis: 0–32ms. The 16.6ms reference line indicates the 60 FPS budget.</li>

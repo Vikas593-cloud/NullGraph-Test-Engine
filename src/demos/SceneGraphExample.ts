@@ -1,6 +1,7 @@
 // demos/SceneGraphExample.ts
 import { NullGraph, Camera } from 'null-graph';
 import {cubeIndices, cubeVertices, quadIndices, quadVertices} from "../data/geometryData";
+import {Primitives, StandardLayout} from "null-graph/geometry";
 
 class SceneNode {
     // NEW: We tag the node so we know which batch it belongs to!
@@ -74,10 +75,11 @@ class SceneNode {
 export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {
 
 
-    const cubeVBO = engine.bufferManager.createVertexBuffer(cubeVertices);
-    const cubeIBO = engine.bufferManager.createIndexBuffer(cubeIndices);
+    const sphereGeom=Primitives.createSphere(StandardLayout,0.3,3,3);
+
     const quadVBO = engine.bufferManager.createVertexBuffer(quadVertices);
     const quadIBO = engine.bufferManager.createIndexBuffer(quadIndices);
+    sphereGeom.upload(engine)
     const mainPass = engine.createPass({
         name: 'Scene Graph Main Pass',
         isMainScreenPass: true
@@ -123,17 +125,11 @@ export async function setupSceneGraph(engine: NullGraph, camera: Camera, getUiSt
         shaderCode: shaderSource,
         strideFloats: 14,
         maxInstances: 10000,
-        vertexLayouts: [{
-            arrayStride: 6 * 4,
-            attributes: [
-                { shaderLocation: 0, offset: 0, format: 'float32x3' as GPUVertexFormat },
-                { shaderLocation: 1, offset: 12, format: 'float32x3' as GPUVertexFormat }
-            ]
-        }]
+        vertexLayouts: sphereGeom.layout.getWebGPUDescriptor(),
     };
 
     const planetBatch = engine.createBatch(mainPass,pipelineConfig);
-    engine.setBatchGeometry(planetBatch, cubeVBO, cubeIBO, cubeIndices.length);
+    engine.setBatchGeometry(planetBatch, sphereGeom.vertexBuffer!, sphereGeom.indexBuffer!, sphereGeom.indices.length);
 
     const moonBatch = engine.createBatch(mainPass,pipelineConfig);
     engine.setBatchGeometry(moonBatch, quadVBO, quadIBO, quadIndices.length);

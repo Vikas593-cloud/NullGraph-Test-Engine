@@ -1,7 +1,5 @@
 // demos/WebGPUExperiments/QuantumNebula/index.ts
 import { NullGraph, Camera } from 'null-graph';
-import { nebulaComputeShader, nebulaRenderShader } from "./shaders";
-import { hologramPostProcessShader } from "./postProcessShaders";
 import { UIState } from "../../../types";
 import { Primitives, StandardLayout } from "null-graph/geometry";
 
@@ -12,6 +10,11 @@ export async function setupQuantumNebula(engine: NullGraph, camera: Camera, getS
     // Using cubes for the particles
     const cubeGeom = Primitives.createCube(StandardLayout, 2, 2, 2);
     cubeGeom.upload(engine);
+    const [computeRes,renderRes,postRes] = await Promise.all([
+        fetch('./shaders/demos/WebGPUExperiments/QuantumNebula/nebula.compute.wgsl'),
+        fetch('./shaders/demos/WebGPUExperiments/QuantumNebula/nebula.render.wgsl'),
+        fetch('./shaders/demos/WebGPUExperiments/QuantumNebula/hologram.postprocess.wgsl')
+    ]);
 
     // --- 1. RENDER TARGETS ---
     const offscreenTexture = engine.device.createTexture({
@@ -19,6 +22,11 @@ export async function setupQuantumNebula(engine: NullGraph, camera: Camera, getS
         format: 'rgba16float',
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
+
+
+    const nebulaComputeShader = await computeRes.text();
+    const nebulaRenderShader = await renderRes.text()
+    const hologramPostProcessShader = await postRes.text();
 
     const offscreenDepth = engine.device.createTexture({
         size: [2048, 2048],
@@ -45,6 +53,8 @@ export async function setupQuantumNebula(engine: NullGraph, camera: Camera, getS
             depthClearValue: 1.0, depthLoadOp: 'clear', depthStoreOp: 'store'
         }
     });
+
+
 
     // --- NEW BATCH API IN ACTION ---
     const physicsBatch = engine.createBatch(scenePass, {

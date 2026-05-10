@@ -20,6 +20,15 @@ import {setupGLBLoaderExample} from "../demos/3DModelsExperiments/GLBLoader/GLBL
 import {setupEpicSwarm} from "../demos/3DModelsExperiments/EpicSwarm";
 import {glbInstancingDocumentation} from "../demos/3DModelsExperiments/GLBLoader/Documentation";
 import {epicSwarmDocumentation} from "../demos/3DModelsExperiments/EpicSwarm/Documentation";
+import {geometry3DExampleDocumentation} from "../demos/documentation/3dGeometryDocumentation";
+import {ambientLightCubeDocumentation} from "../demos/documentation/ambientLightCubeDocumentation";
+import {arrayOfStructsDocumentation} from "../demos/documentation/arrayOfStructsDocumentation";
+import {aosoaDocumentation} from "../demos/documentation/aosoaDocumentation";
+import {soaDocumentation} from "../demos/documentation/soaDocumentation";
+import {sceneGraphDocumentation} from "../demos/documentation/sceneGraphDocumentation";
+import {gpuCullingDocumentation} from "../demos/documentation/gpuCullingDocumentation";
+import {gpuLodDocumentation} from "../demos/documentation/gpuLodDocumentation";
+import {megabufferDocumentation} from "../demos/documentation/megabufferDocumentation";
 
 export const DEMO_DATA: Record<string, DemoMetadata> = {
     "demo-crt-effect": {
@@ -48,6 +57,15 @@ fn curve(uv: vec2<f32>) -> vec2<f32> {
             }
         ]
     },
+    'demo-3d-cube':geometry3DExampleDocumentation,
+    'demo-3d-cube-ambient-light':ambientLightCubeDocumentation,
+    'demo-aos':arrayOfStructsDocumentation,
+    'demo-aosoa':aosoaDocumentation,
+    'demo-soa':soaDocumentation,
+    'demo-oop':sceneGraphDocumentation,
+    'demo-gpu-culling':gpuCullingDocumentation,
+    'demo-gpu-lod':gpuLodDocumentation,
+    'demo-mega-buffer':megabufferDocumentation,
     "demo-cymatic-resonance":cymaticDocumentation,
     "demo-deferred-rendering":deferredRenderingDocumentation,
     "demo-implicit-screen-saver":implicitScreensaverDocumentation,

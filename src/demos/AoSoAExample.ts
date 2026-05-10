@@ -1,6 +1,5 @@
 // demos/AoSoAExample.ts
 import { NullGraph, Camera } from 'null-graph';
-import { octahedronIndices, octahedronVertices } from "../data";
 import {Primitives, StandardLayout} from "null-graph/geometry";
 
 export async function setupAoSoA(engine: NullGraph, camera: Camera, getUiState: () => { amplitude: number }) {

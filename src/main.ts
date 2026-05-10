@@ -9,13 +9,36 @@ import { PerformanceWidget } from "null-graph/debug-ui";
 
 // Global UI State
 let uiState: UIState = {
-    timeScale: 0.3, amplitude: 2.0, auraR: 30.0, auraG: 0.0, auraB: 5.0,
-    feedRate: 0.055, killRate: 0.062,
+    // Existing defaults
+    timeScale: 0.3,
+    amplitude: 2.0,
+    auraR: 30.0,
+    auraG: 0.0,
+    auraB: 5.0,
+
+    // Morphogenesis
+    feedRate: 0.055,
+    killRate: 0.062,
     baseColor: [5/255, 13/255, 38/255],
     peakColor: [51/255, 230/255, 204/255],
+
+    // Gyroid defaults
+    coreColor: [0.0, 0.8, 1.0],     // Cyan Base
+    exciteColor: [1.0, 0.2, 0.5],   // Hot Pink for high velocity
+    fractureColor: [3.0, 2.0, 0.5], // Blinding gold near mouse (HDR values)
+
+    // Aetherial Flow
+    curveColor :[0.0, 1.0, 0.7],
+    fastColor:[1.0, 0.0, 0.8],
+    pulseColor:[0.2, 0.2, 0.5],
+
+    //--Singularity
+    coolColor :[0.05, 0.0, 0.2],
+    hotColor:[0.0, 0.8, 1.0],
+    coreSingularityColor:[1.0, 0.9, 0.8],
+
     wantsRestart: false
 };
-
 // ---------------------------------------------------------
 // MAIN ENGINE & RENDER LOOP
 // ---------------------------------------------------------

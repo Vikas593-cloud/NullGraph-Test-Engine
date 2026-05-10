@@ -4,10 +4,35 @@ import { turingPresets } from "../data/geometryData";
 import { ALL_MANAGED_SLIDERS, demoControlsMap } from "../data/demoRegistryData";
 
 export function initEngineControls(onStateChange: (state: UIState) => void) {
-    const state: UIState = {
-        timeScale: 0.3, amplitude: 2.0, auraR: 30.0, auraG: 0.0, auraB: 5.0,
-        feedRate: 0.055, killRate: 0.062,
-        baseColor: [5/255, 13/255, 38/255], peakColor: [51/255, 230/255, 204/255],
+    let state: UIState = {
+        // Existing defaults
+        timeScale: 0.3,
+        amplitude: 2.0,
+        auraR: 30.0,
+        auraG: 0.0,
+        auraB: 5.0,
+
+        // Morphogenesis
+        feedRate: 0.055,
+        killRate: 0.062,
+        baseColor: [5/255, 13/255, 38/255],
+        peakColor: [51/255, 230/255, 204/255],
+
+        // Gyroid defaults
+        coreColor: [0.0, 0.8, 1.0],     // Cyan Base
+        exciteColor: [1.0, 0.2, 0.5],   // Hot Pink for high velocity
+        fractureColor: [3.0, 2.0, 0.5], // Blinding gold near mouse (HDR values)
+
+        // Aetherial Flow
+        curveColor :[0.0, 1.0, 0.7],
+        fastColor:[1.0, 0.0, 0.8],
+        pulseColor:[0.2, 0.2, 0.5],
+
+        // Singularity
+        coolColor :[0.05, 0.0, 0.2],
+        hotColor:[0.0, 0.8, 1.0],
+        coreSingularityColor:[1.0, 0.9, 0.8],
+
         wantsRestart: false
     };
 
@@ -24,7 +49,22 @@ export function initEngineControls(onStateChange: (state: UIState) => void) {
         feed: { in: getEl('feed-slider'), val: getValEl('feed-val') },
         kill: { in: getEl('kill-slider'), val: getValEl('kill-val') },
         base: getEl('base-color'),
-        peak: getEl('peak-color')
+        peak: getEl('peak-color'),
+
+        // NEW: Gyroid Color Pickers
+        core: getEl('core-color'),
+        excite: getEl('excite-color'),
+        fracture: getEl('fracture-color'),
+
+        // -- Aether Params---
+        curve: getEl('curve-color'),
+        fast: getEl('fast-color'),
+        pulse: getEl('pulse-color'),
+
+        // -- Singularity
+        cool: getEl('cool-color'),
+        hot: getEl('hot-color'),
+        coreSingularity: getEl('core-singularity-color'),
     };
 
     const presetSelect = document.getElementById('pattern-preset') as HTMLSelectElement | null;
@@ -48,6 +88,24 @@ export function initEngineControls(onStateChange: (state: UIState) => void) {
         if (sliders.base) state.baseColor = hexToRGB(sliders.base.value);
         if (sliders.peak) state.peakColor = hexToRGB(sliders.peak.value);
 
+        // NEW: Update Gyroid Colors
+        if (sliders.core) state.coreColor = hexToRGB(sliders.core.value);
+        if (sliders.excite) state.exciteColor = hexToRGB(sliders.excite.value);
+        if (sliders.fracture) {
+            const fracBase = hexToRGB(sliders.fracture.value);
+            // Multiply by 3 to maintain the HDR/bloom intensity since standard color pickers cap at 1.0
+            state.fractureColor = [fracBase[0] * 3.0, fracBase[1] * 3.0, fracBase[2] * 3.0];
+        }
+
+        // --Aether --
+        if (sliders.curve) state.curveColor = hexToRGB(sliders.curve.value);
+        if (sliders.fast) state.fastColor = hexToRGB(sliders.fast.value);
+        if (sliders.pulse) state.pulseColor = hexToRGB(sliders.pulse.value);
+
+        // --Singularity
+        if (sliders.cool) state.coolColor = hexToRGB(sliders.cool.value);
+        if (sliders.hot) state.hotColor = hexToRGB(sliders.hot.value);
+        if (sliders.coreSingularity) state.coreSingularityColor = hexToRGB(sliders.coreSingularity.value);
         onStateChange(state);
     };
 

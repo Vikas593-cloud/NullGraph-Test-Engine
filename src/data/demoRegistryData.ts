@@ -147,6 +147,11 @@ export const demoRegistry = {
 };
 
 export const demoControlsMap: Record<string, string[]> = {
+    // --- Architecture Demos
+    'demo-aos':['speed-slider','amp-slider'],
+    'demo-aosoa':['speed-slider','amp-slider'],
+    'demo-soa':['speed-slider','amp-slider'],
+    'demo-oop':['speed-slider','amp-slider'],
     // --- 3D Geometry Examples ---
     'demo-3d-cube': ['amp-slider','speed-slider'],
     'demo-3d-cube-ambient-light': ['amp-slider','speed-slider'],
@@ -176,9 +181,13 @@ export const demoControlsMap: Record<string, string[]> = {
         'base-color', 'peak-color',
         'btn-restart','speed-slider',
     ],
-    'demo-deferred-rendering':['speed-slider','amp-slider']
+    'demo-deferred-rendering':['speed-slider','amp-slider'],
+    'demo-gyroid-resonance':['speed-slider','core-color','excite-color','fracture-color','btn-restart'],
+    'demo-aetherial-flow':['speed-slider','curve-color','fast-color','pulse-color','btn-restart'],
+    'demo-singularity':['speed-slider','core-singularity-color','hot-color','cool-color','btn-restart']
 };export const ALL_MANAGED_SLIDERS = [
     'amp-slider', 'r-slider', 'g-slider', 'b-slider',
     'feed-slider', 'kill-slider', 'base-color', 'peak-color',
-    'btn-restart', 'pattern-preset','speed-slider',
+    'btn-restart', 'pattern-preset','speed-slider','core-color','excite-color','fracture-color',
+    'curve-color','fast-color','pulse-color','core-singularity-color','hot-color','cool-color'
 ];

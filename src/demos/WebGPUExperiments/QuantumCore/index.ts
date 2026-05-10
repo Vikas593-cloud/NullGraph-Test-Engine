@@ -1,7 +1,6 @@
 // demos/QuantumCore/index.ts
 import { NullGraph, Camera } from 'null-graph';
 import { Primitives, StandardLayout } from "null-graph/geometry";
-import { quantumCoreSceneShader, godRaysPostProcessShader } from "./shaders";
 import { generateCoreData, MAX_INSTANCES, STRIDE } from "./geometry";
 import {UIState} from "../../../types";
 
@@ -20,6 +19,11 @@ export async function setupQuantumCoreDemo(engine: NullGraph, camera: Camera, ge
         format: 'depth24plus',
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
+
+    const [renderRes,postRes] = await Promise.all([
+        fetch('./shaders/demos/WebGPUExperiments/QuantumCore/quantumcore.render.wgsl'),
+        fetch('./shaders/demos/WebGPUExperiments/QuantumCore/godrays.postprocess.wgsl')
+    ]);
 
     const sampler = engine.device.createSampler({
         magFilter: 'linear', minFilter: 'linear',
@@ -43,6 +47,9 @@ export async function setupQuantumCoreDemo(engine: NullGraph, camera: Camera, ge
 
     const cubeGeom = Primitives.createCube(StandardLayout, 1.0, 1.0, 1.0);
     cubeGeom.upload(engine);
+
+    const quantumCoreSceneShader = await renderRes.text()
+    const godRaysPostProcessShader = await postRes.text();
 
     const sceneBatch = engine.createBatch(scenePass, {
         shaderCode: quantumCoreSceneShader,
