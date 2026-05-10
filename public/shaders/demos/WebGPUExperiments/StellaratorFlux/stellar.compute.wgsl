@@ -1,8 +1,7 @@
-export const stellarComputeShader = `
-    struct IndirectDrawArgs { indexCount: u32, instanceCount: atomic<u32>, firstIndex: u32, baseVertex: u32, firstInstance: u32 };
+struct IndirectDrawArgs { indexCount: u32, instanceCount: atomic<u32>, firstIndex: u32, baseVertex: u32, firstInstance: u32 };
     struct Camera { viewProj: mat4x4<f32>, eye: vec3<f32>, simTime: f32 };
-    
-    @group(0) @binding(0) var<uniform> camera: Camera; 
+
+    @group(0) @binding(0) var<uniform> camera: Camera;
     @group(0) @binding(1) var<storage, read_write> physicsState: array<f32>;
     @group(0) @binding(2) var<storage, read_write> renderData: array<f32>;
     @group(0) @binding(3) var<storage, read_write> drawArgs: IndirectDrawArgs;
@@ -10,7 +9,7 @@ export const stellarComputeShader = `
    @compute @workgroup_size(64)
     fn cs_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let idx = global_id.x;
-        if (idx >= 150000u) { return; } 
+        if (idx >= 150000u) { return; }
 
         let time = camera.simTime;
         let base = idx * 14u;
@@ -38,7 +37,7 @@ export const stellarComputeShader = `
         let dynamicMinorRadius = baseMinorRadius + pinch;
 
         // --- FORCES ---
-        
+
         // A: Confinement Force (Pulls plasma into the tube shape)
         let confinementForce = -normToParticle * (distToRing - dynamicMinorRadius) * 15.0;
 
@@ -68,30 +67,30 @@ export const stellarComputeShader = `
 
         // Combine Forces
         var force = confinementForce + poloidalForce + toroidalForce + turbulence;
-        
+
         // Let the mouse rip particles out of the magnetic field
         if (mouseDist < 60.0) {
             force += anomalyForce;
         }
 
         // --- INTEGRATE ---
-        let dt = 0.016; 
+        let dt = 0.016;
         vel += force * dt;
-        
+
         // Speed limits
         let speedLimit = 220.0;
         let speed = length(vel);
         if (speed > speedLimit) {
             vel = (vel / speed) * speedLimit;
         }
-        
+
         vel *= 0.96; // Magnetic drag / damping
         pos += vel * dt;
 
         // --- THERMAL COLOR MAPPING ---
         // Map color based on how close the particle is to the magnetic core
         let heat = clamp(1.0 - (distToRing / (dynamicMinorRadius * 1.5)), 0.0, 1.0);
-        
+
         let edgeColor = vec3<f32>(0.5, 0.0, 1.0);  // Deep Purple
         let midColor  = vec3<f32>(0.0, 0.8, 1.0);  // Neon Cyan
         let coreColor = vec3<f32>(1.0, 0.9, 1.0);  // Superhot White-Pink
@@ -108,61 +107,9 @@ export const stellarComputeShader = `
 
         let writeIdx = atomicAdd(&drawArgs.instanceCount, 1u);
         let wBase = writeIdx * 14u;
-        
+
         for(var i = 0u; i < 7u; i = i + 1u) { renderData[wBase + i] = physicsState[base + i]; }
-        renderData[wBase + 11u] = max(finalColor.r, 0.0); 
-        renderData[wBase + 12u] = max(finalColor.g, 0.0); 
+        renderData[wBase + 11u] = max(finalColor.r, 0.0);
+        renderData[wBase + 12u] = max(finalColor.g, 0.0);
         renderData[wBase + 13u] = max(finalColor.b, 0.0);
     }
-`;
-
-export const stellarRenderShader = `
-    struct Camera { viewProj: mat4x4<f32> };
-    @group(0) @binding(0) var<uniform> camera: Camera;
-    @group(0) @binding(1) var<storage, read> ecs: array<f32>;
-
-    struct VertexOut {
-        @builtin(position) pos: vec4<f32>,
-        @location(0) color: vec3<f32>,
-        @location(1) dist: f32, 
-    };
-
-    @vertex
-    fn vs_main(@location(0) localPos: vec3<f32>, @builtin(instance_index) iIdx: u32) -> VertexOut {
-        let base = iIdx * 14u;
-        let pos = vec3<f32>(ecs[base + 1u], ecs[base + 2u], ecs[base + 3u]);
-        let vel = vec3<f32>(ecs[base + 4u], ecs[base + 5u], ecs[base + 6u]); 
-        let baseColor = vec3<f32>(ecs[base + 11u], ecs[base + 12u], ecs[base + 13u]);
-
-        let speed = length(vel);
-        let forward = normalize(vel + vec3<f32>(0.0001, 0.0, 0.0));
-        let worldUp = vec3<f32>(0.0, 1.0, 0.0);
-        
-        var right = cross(worldUp, forward);
-        if (length(right) < 0.001) { right = cross(vec3<f32>(1.0, 0.0, 0.0), forward); }
-        right = normalize(right);
-        
-        let up = cross(forward, right);
-        let rotMat = mat3x3<f32>(right, up, forward);
-        
-        // Stretch the particles radically based on speed to look like light streaks
-        let scaleVec = vec3<f32>(0.15, 0.15, 0.5 + speed * 0.12);
-        let orientedPos = rotMat * (localPos * scaleVec);
-
-        let worldPosition = orientedPos + pos;
-        let screenPos = camera.viewProj * vec4<f32>(worldPosition, 1.0);
-
-        var out: VertexOut;
-        out.pos = screenPos;
-        // Boost color for the Uncharted 2 Tonemapper in the post-pass
-        out.color = baseColor * 2.5; 
-        out.dist = screenPos.w; 
-        return out;
-    }
-
-    @fragment
-    fn fs_main(@location(0) color: vec3<f32>, @location(1) dist: f32) -> @location(0) vec4<f32> {
-        let depthAlpha = clamp(1.0 - (dist / 450.0), 0.0, 1.0);
-        return vec4<f32>(color, depthAlpha); 
-    }
-`;
