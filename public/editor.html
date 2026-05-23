@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NullGraph Sandbox</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+
+    <!-- Modular CSS Links -->
+    <link rel="stylesheet" href="tutorial-css/theme.css">
+    <link rel="stylesheet" href="tutorial-css/layout.css">
+    <link rel="stylesheet" href="tutorial-css/tabs.css">
+    <link rel="stylesheet" href="tutorial-css/editor.css">
+
+    <!-- Icons for IDE look -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+
+<div class="ide-root">
+    <!-- LEFT MOST: Activity Bar -->
+    <div class="activity-bar">
+        <div class="activity-top">
+            <div class="icon-btn active"><i data-lucide="files"></i></div>
+<!--            <div class="icon-btn"><i data-lucide="search"></i></div>-->
+<!--            <div class="icon-btn"><i data-lucide="git-merge"></i></div>-->
+<!--            <div class="icon-btn"><i data-lucide="play"></i></div>-->
+        </div>
+        <div class="activity-bottom">
+<!--            <div class="icon-btn"><i data-lucide="settings"></i></div>-->
+        </div>
+    </div>
+
+    <!-- MAIN WORKSPACE: Split Panes -->
+    <div class="workspace" style="display: flex; height: 100%; width: 100%;">
+
+        <!-- NEW: File Explorer Sidebar -->
+        <div class="sidebar" style="width: 200px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column;">
+            <div style="padding: 10px 15px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #969696; display: flex; justify-content: space-between; align-items: center;">
+                <span>Explorer</span>
+                <button id="btn-add-file" style="background: none; border: none; color: #d4d4d4; cursor: pointer; padding: 2px;">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                </button>
+            </div>
+            <div id="file-list" style="flex: 1; overflow-y: auto; padding: 5px 0;">
+                <!-- File items injected here -->
+            </div>
+        </div>
+
+        <!-- PANE 1: Editor -->
+        <div class="pane pane-left" style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+            <div class="pane-header" style="padding: 10px 15px; border-bottom: 1px solid #333; background: #1e1e1e; color: #d4d4d4; font-size: 13px;">
+                <i data-lucide="file-code" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;"></i>
+                <span id="active-file-name">main.ts</span>
+            </div>
+            <div class="editor-wrapper" id="editor-container" style="flex: 1;"></div>
+        </div>
+
+        <!-- SPLITTER -->
+        <div class="pane-resizer"></div>
+
+        <!-- PANE 2: Preview -->
+        <div class="pane pane-right" style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+            <div class="pane-header header-right">
+                <div class="tab-group">
+                    <div class="tab preview-tab active">
+                        <i data-lucide="monitor-play" class="tab-icon accent-icon"></i> Live Output
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-restart" class="action-btn">
+                        <i data-lucide="rotate-cw"></i> Restart
+                    </button>
+                </div>
+            </div>
+
+            <div class="preview-wrapper" id="preview-container" style="flex: 1; position: relative; min-height: 0;"></div>
+
+            <!-- Console Panel -->
+            <div id="console-panel" style="height: 150px; background-color: #1e1e1e; border-top: 1px solid #333; display: flex; flex-direction: column; transition: height 0.2s ease;">
+                <div id="console-header" style="background-color: #252526; padding: 6px 12px; font-size: 11px; text-transform: uppercase; color: #969696; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    <span>Console</span>
+                    <i data-lucide="chevron-down" id="console-toggle-icon" style="width: 14px; height: 14px;"></i>
+                </div>
+                <div id="console-body" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                    <div id="console-logs" style="flex: 1; overflow-y: auto; padding: 8px 10px; font-family: 'Consolas', monospace; font-size: 13px; color: #d4d4d4;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM: Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span class="status-item"><i data-lucide="x-circle" class="error-icon"></i> 0</span>
+            <span class="status-item"><i data-lucide="alert-triangle" class="warn-icon"></i> 0</span>
+            <span class="status-item">NullGraph v1.0.0</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item">Ln 1, Col 1</span>
+            <span class="status-item">Spaces: 4</span>
+            <span class="status-item">UTF-8</span>
+            <span class="status-item">TypeScript</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+</script>
+<script type="module" src="editor.js"></script>
+</body>
+</html>
