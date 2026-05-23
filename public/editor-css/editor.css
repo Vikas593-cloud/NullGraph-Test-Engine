@@ -4,96 +4,293 @@
     position: relative;
     background: var(--bg-editor);
     overflow: hidden;
+    border-radius: 0 0 8px 0;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .preview-wrapper {
     flex-grow: 1;
     position: relative;
-    background: #000;
+    background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 70%);
+    border-radius: 0 0 0 8px;
+    overflow: hidden;
 }
 
-/* Activity Bar Icons */
+/* Activity Bar Icons (Refined Minimalist) */
 .icon-btn {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
+    margin: 6px auto;
+    border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
     color: var(--text-muted);
     cursor: pointer;
-    border-left: 2px solid transparent;
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    background: transparent;
+    position: relative;
+    overflow: hidden;
 }
 
-.icon-btn:hover { color: var(--text-light); }
-.icon-btn.active { color: var(--text-light); border-left-color: var(--accent); }
-.icon-btn i { width: 22px; height: 22px; }
+.icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    border-radius: inherit;
+}
 
-/* Status Bar */
+.icon-btn:hover {
+    color: var(--text-light);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.icon-btn.active {
+    color: var(--accent);
+    background: rgba(51, 230, 204, 0.12);
+    box-shadow: 0 0 20px rgba(51, 230, 204, 0.15);
+    font-weight: 600;
+}
+
+.icon-btn.active::before {
+    opacity: 0.08;
+}
+
+.icon-btn i {
+    width: 20px;
+    height: 20px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    position: relative;
+    z-index: 1;
+}
+
+.icon-btn.active i {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 8px rgba(51, 230, 204, 0.4));
+}
+
+/* Status Bar (Executive Dark) */
+/* Status Bar - Executive Grade */
 .status-bar {
     grid-area: status;
-    height: 22px;
-    background-color: var(--vscode-blue);
-    color: #ffffff;
+    height: 34px; /* Increased from 28px */
+    background: linear-gradient(180deg,
+    rgba(18, 18, 18, 0.98) 0%,
+    rgba(10, 10, 10, 0.99) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+            0 -2px 10px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    color: var(--text-muted, #999);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
-    font-size: 11px;
-    font-family: monospace;
+    padding: 0 20px;
+    font-size: 11.5px;
+    font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+    font-weight: 500;
+    letter-spacing: 0.4px;
     z-index: 20;
 }
 
 .status-left, .status-right {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 24px; /* More breathing room */
 }
 
-.status-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
-.status-item:hover { background: rgba(255,255,255,0.1); }
-.status-item i { width: 12px; height: 12px; }
-
-/* Action Buttons (Restart) */
-.header-actions { padding-right: 12px; }
-.action-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-light);
-    cursor: pointer;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 12px;
+.status-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    transition: 0.2s;
-}
-.action-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--text-muted); }
-.action-btn i { width: 14px; height: 14px; }
-
-/* IDE Scrollbars */
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: var(--bg-root); }
-::-webkit-scrollbar-thumb {
-    background: #464646;
-    border: 3px solid var(--bg-root); /* Creates a padded look */
+    gap: 8px;
+    cursor: pointer;
+    padding: 5px 10px;
     border-radius: 6px;
+    transition: all 0.2s ease;
+    position: relative;
+    font-size: 11.5px;
 }
-::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
 
+.status-item::after {
+    content: '';
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 70%;
+    height: 1.5px;
+    background: var(--accent, #33e6cc);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 1px;
+}
+
+.status-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-light, #e0e0e0);
+}
+
+.status-item:hover::after {
+    transform: translateX(-50%) scaleX(1);
+}
+
+.status-item i {
+    width: 14px;
+    height: 14px;
+    opacity: 0.85;
+}
+
+.error-icon {
+    color: #ff5f5f;
+    filter: drop-shadow(0 0 5px rgba(255, 95, 95, 0.3));
+}
+
+.warn-icon {
+    color: #ffbd2e;
+    filter: drop-shadow(0 0 5px rgba(255, 189, 46, 0.3));
+}
+
+/* Action Buttons (Elite Glowing Glass) */
+.header-actions {
+    padding-right: 16px;
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 7px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(51, 230, 204, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.action-btn:hover {
+    background: rgba(51, 230, 204, 0.1);
+    border-color: rgba(51, 230, 204, 0.3);
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(51, 230, 204, 0.15), 0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.action-btn:hover::before {
+    left: 100%;
+}
+
+.action-btn:active {
+    transform: translateY(0);
+    transition: transform 0.1s ease;
+}
+
+.action-btn i {
+    width: 15px;
+    height: 15px;
+    filter: drop-shadow(0 0 4px rgba(51, 230, 204, 0.3));
+}
+
+/* IDE Scrollbars (Polished Micro-Interaction) */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 100px;
+    transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: rgba(51, 230, 204, 0.3);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Error Log (Executive Alert) */
 #error-log {
     position: absolute;
-    bottom: 20px; left: 20px; right: 20px;
-    background: var(--error-bg);
-    color: #fff;
-    border: 1px solid #ff4d4d;
-    border-radius: 6px;
-    padding: 15px;
-    font-family: monospace;
+    bottom: 28px;
+    left: 28px;
+    right: 28px;
+    background: linear-gradient(135deg, rgba(40, 0, 0, 0.9) 0%, rgba(20, 0, 0, 0.95) 100%);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    color: #ff9999;
+    border: 1px solid rgba(255, 80, 80, 0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
     font-size: 13px;
-    display: none; /* Hidden by default */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: none;
+    box-shadow:
+            0 20px 40px rgba(255, 0, 0, 0.12),
+            0 8px 16px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
     z-index: 1000;
     white-space: pre-wrap;
     word-break: break-all;
+    border-left: 3px solid #ff4d4d;
+    animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    letter-spacing: 0.2px;
+    line-height: 1.6;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

@@ -7,10 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 
     <!-- Modular CSS Links -->
-    <link rel="stylesheet" href="tutorial-css/theme.css">
-    <link rel="stylesheet" href="tutorial-css/layout.css">
-    <link rel="stylesheet" href="tutorial-css/tabs.css">
-    <link rel="stylesheet" href="tutorial-css/editor.css">
+    <link rel="stylesheet" href="editor-css/theme.css">
+    <link rel="stylesheet" href="editor-css/layout.css">
+    <link rel="stylesheet" href="editor-css/tabs.css">
+    <link rel="stylesheet" href="editor-css/editor.css">
 
     <!-- Icons for IDE look -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -22,7 +22,7 @@
     <!-- LEFT MOST: Activity Bar -->
     <div class="activity-bar">
         <div class="activity-top">
-            <div class="icon-btn active"><i data-lucide="files"></i></div>
+                <div class="icon-btn active" id="btn-toggle-explorer"><i data-lucide="files"></i></div>
 <!--            <div class="icon-btn"><i data-lucide="search"></i></div>-->
 <!--            <div class="icon-btn"><i data-lucide="git-merge"></i></div>-->
 <!--            <div class="icon-btn"><i data-lucide="play"></i></div>-->
@@ -36,7 +36,8 @@
     <div class="workspace" style="display: flex; height: 100%; width: 100%;">
 
         <!-- NEW: File Explorer Sidebar -->
-        <div class="sidebar" style="width: 200px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column;">
+        <!-- Add id="sidebar-container" here -->
+        <div class="sidebar" id="sidebar-container" style="width: 200px; background-color: #252526; border-right: 1px solid #333; display: flex; flex-direction: column;">
             <div style="padding: 10px 15px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #969696; display: flex; justify-content: space-between; align-items: center;">
                 <span>Explorer</span>
                 <button id="btn-add-file" style="background: none; border: none; color: #d4d4d4; cursor: pointer; padding: 2px;">
@@ -95,7 +96,7 @@
         <div class="status-left">
             <span class="status-item"><i data-lucide="x-circle" class="error-icon"></i> 0</span>
             <span class="status-item"><i data-lucide="alert-triangle" class="warn-icon"></i> 0</span>
-            <span class="status-item">NullGraph v1.0.0</span>
+            <span class="status-item">NullGraph v1.0.1</span>
         </div>
         <div class="status-right">
             <span class="status-item">Ln 1, Col 1</span>

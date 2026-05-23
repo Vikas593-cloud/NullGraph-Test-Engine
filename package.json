@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npx shx mkdir -p dist && npx shx cp -r public/* dist/ && esbuild src/main.ts src/tutorial.ts --bundle --outdir=dist --servedir=dist --watch",
-    "build": "npx shx mkdir -p dist && npx shx cp -r public/* dist/ && esbuild src/main.ts src/tutorial.ts --bundle --outdir=dist --minify",
+    "dev": "node build.js --dev",
+    "build": "node build.js",
     "serve": "serve dist",
     "deploy": "npm run build && firebase deploy"
   },

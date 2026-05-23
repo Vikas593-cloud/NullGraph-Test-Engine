@@ -1,61 +1,279 @@
+/* Root Layout - Better Proportions */
 .ide-root {
     display: grid;
-    /* 48px wide activity bar, the rest (1fr) is workspace */
     grid-template-columns: 48px 1fr;
-    /* Fill remaining height (1fr), bottom 22px for status bar */
-    grid-template-rows: 1fr 22px;
+    grid-template-rows: 1fr 34px; /* Increased from 22px to 34px */
     grid-template-areas:
         "activity workspace"
         "status status";
     height: 100vh;
     width: 100vw;
     overflow: hidden;
+    background: var(--bg-primary, #1a1a1a);
 }
 
+/* Activity Bar - Refined */
 .activity-bar {
     grid-area: activity;
-    background-color: var(--bg-activity);
+    background: linear-gradient(180deg,
+    rgba(30, 30, 30, 0.95) 0%,
+    rgba(20, 20, 20, 0.98) 50%,
+    rgba(15, 15, 15, 0.98) 100%);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-right: 1px solid var(--border-color);
+    padding: 12px 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
 }
 
+.activity-top, .activity-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Workspace - Better Structure */
 .workspace {
     grid-area: workspace;
     display: flex;
     height: 100%;
     width: 100%;
+    background: var(--bg-workspace, #0d0d0d);
+    position: relative;
 }
 
-/* Panes */
+/* Panes - Refined Proportions */
 .pane {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-width: 200px;
 }
 
 .pane-left {
-    width: 50%;
-    background-color: var(--bg-editor);
+    flex: 45%; /* Slightly less than 50% for better visual balance with sidebar */
+    background-color: var(--bg-editor, #1e1e1e);
+    min-width: 250px;
 }
 
 .pane-right {
-    width: 50%;
-    background-color: #000;
+    flex: 55%; /* Slightly more for preview emphasis */
+    background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 70%);
+    min-width: 250px;
 }
 
-/* The Draggable-looking Splitter */
+/* Sidebar - Polished */
+.sidebar {
+    width: 220px; /* Slightly wider for breathing room */
+    min-width: 180px;
+    max-width: 350px;
+    background: linear-gradient(180deg, #1e1e1e 0%, #1a1a1a 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Pane Header - More Professional */
+.pane-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(30, 30, 30, 0.95) 0%, rgba(25, 25, 25, 0.95) 100%);
+    color: var(--text-light, #d4d4d4);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.header-right {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+}
+
+/* Tab Group - Modernized */
+.tab-group {
+    display: flex;
+    gap: 4px;
+}
+
+.tab {
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted, #969696);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+}
+
+.tab:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-light, #d4d4d4);
+}
+
+.tab.active {
+    background: rgba(51, 230, 204, 0.1);
+    color: var(--accent, #33e6cc);
+    box-shadow: 0 0 12px rgba(51, 230, 204, 0.15);
+}
+
+.tab-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.accent-icon {
+    color: var(--accent, #33e6cc);
+}
+
+/* Splitter - Premium Look */
 .pane-resizer {
-    width: 4px;
-    background-color: var(--border-resizer);
+    width: 5px;
+    background: linear-gradient(90deg,
+    rgba(51, 51, 51, 0.1) 0%,
+    rgba(51, 51, 51, 0.8) 40%,
+    rgba(51, 51, 51, 0.8) 60%,
+    rgba(51, 51, 51, 0.1) 100%);
     cursor: col-resize;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
     z-index: 10;
+    position: relative;
+}
+
+.pane-resizer::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    transition: all 0.2s ease;
 }
 
 .pane-resizer:hover {
-    background-color: var(--vscode-blue);
+    background: linear-gradient(90deg,
+    rgba(0, 122, 204, 0.1) 0%,
+    rgba(0, 122, 204, 0.6) 40%,
+    rgba(0, 122, 204, 0.6) 60%,
+    rgba(0, 122, 204, 0.1) 100%);
+}
+
+.pane-resizer:hover::before {
+    background: rgba(0, 122, 204, 0.8);
+    width: 3px;
+    height: 32px;
+}
+
+.pane-resizer.active {
+    background: rgba(0, 122, 204, 0.8);
+}
+
+/* Console Panel - Enhanced */
+#console-panel {
+    height: 180px; /* Slightly taller */
+    min-height: 100px;
+    max-height: 400px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #151515 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#console-header {
+    background: linear-gradient(180deg, rgba(30, 30, 30, 0.95) 0%, rgba(25, 25, 25, 0.95) 100%);
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted, #969696);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+#console-header:hover {
+    color: var(--text-light, #d4d4d4);
+}
+
+#console-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#console-logs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 16px;
+    font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-light, #d4d4d4);
+}
+
+/* File List - Better Styling */
+#file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+/* File items can be styled via JS */
+.file-item {
+    padding: 6px 16px;
+    font-size: 12px;
+    color: #cccccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+    border-left: 2px solid transparent;
+}
+
+.file-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.file-item.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--accent, #33e6cc);
+}
+
+/* Add File Button */
+#btn-add-file {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted, #969696);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+#btn-add-file:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light, #d4d4d4);
+    border-color: rgba(255, 255, 255, 0.2);
 }

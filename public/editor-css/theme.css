@@ -1,28 +1,28 @@
 :root {
-    /* Base Colors */
-    --bg-root: #181818;
-    --bg-activity: #111111;
-    --bg-sidebar: #1e1e1e;
-    --bg-editor: #1e1e1e;
-    --bg-tab-inactive: #2d2d2d;
-    --bg-status: #007acc;
+    /* Base Colors - OLED-style deep blacks & subtle depths */
+    --bg-root: #000000;
+    --bg-activity: #000000;
+    --bg-sidebar: #0a0a0a;
+    --bg-editor: #0d0d0d;
+    --bg-tab-inactive: #0a0a0a;
 
-    /* UI Borders */
-    --border-color: #333333;
-    --border-resizer: #2b2b2b;
+    /* UI Borders - Barely-there structural lines */
+    --border-color: #222222;
+    --border-resizer: transparent;
 
-    /* Text & Accents */
-    --text-main: #cccccc;
-    --text-muted: #858585;
-    --text-light: #ffffff;
-    --accent: #33e6cc;
-    --accent-hover: #4dffda;
-    --vscode-blue: #007acc;
+    /* Text - Crisp "Zinc" grays for high readability without glare */
+    --text-main: #a1a1aa;   /* Zinc 400 */
+    --text-muted: #52525b;  /* Zinc 600 */
+    --text-light: #f4f4f5;  /* Zinc 100 */
+
+    /* Premium Accent - Electric Teal/Cyan */
+    --accent: #00e5bf;
+    --accent-hover: #33ffdb;
 
     /* Language Icon Colors */
     --ts-blue: #3178c6;
     --js-yellow: #f7df1e;
-    --error-bg: #cc0000;
+    --error-bg: #ef4444; /* Modern soft red */
 }
 
 body, html {
@@ -32,6 +32,11 @@ body, html {
     width: 100%;
     background-color: var(--bg-root);
     color: var(--text-main);
-    font-family: 'Inter', system-ui, sans-serif;
+    /* Modernized font stack favoring clarity and smoothness */
+    font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     overflow: hidden;
+
+    /* Crucial for making thin fonts look premium on dark mode */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
